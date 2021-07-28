@@ -53,3 +53,7 @@ dkms.conf
 
 # Ignore test files
 /stage_*
+test_compiler.sh
+
+# Ignore executable
+compiler
