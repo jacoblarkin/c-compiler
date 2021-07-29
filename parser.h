@@ -24,7 +24,7 @@ typedef struct ExpressionNode_t {
   ExpressionType type;
   union {
     int int_value;
-    ExpressionNode_t *unary_operand;
+    struct ExpressionNode_t *unary_operand;
   };
 } ExpressionNode;
 
