@@ -13,7 +13,10 @@ typedef enum TokenType_t {
   IDENTIFIER,
   INT_LITERAL,
   HEX_LITERAL,
-  OCT_LITERAL
+  OCT_LITERAL,
+  LOGICAL_NOT,
+  BITWISE_NOT,
+  MINUS
 } TokenType;
 
 typedef struct Token_t {
