@@ -25,7 +25,7 @@ ProgramNode parse(TokenList* tokens)
   FunctionNode* current_func;
   current_func = NULL;
 
-  while(curr != tokens->last) {
+  while(curr) {
     Token tok = curr->tok;
     switch(tok.type) {
     case LEFT_BRACE:
@@ -64,6 +64,9 @@ ProgramNode parse(TokenList* tokens)
         state = FUNCTION;
         while(curr->tok.type != LEFT_BRACE) {
           curr = curr->next;
+          if(!curr) {
+            print_error("Missing brace.");
+          }
         }
         depth++;
       } else {
@@ -82,6 +85,9 @@ ProgramNode parse(TokenList* tokens)
       current_func->body[current_func->num_statements++] = construct_statement(curr);
       while(curr->tok.type != SEMICOLON) {
         curr = curr->next;
+        if(!curr) {
+          print_error("Missing semicolon.");
+        }
       }
       break;
     case IDENTIFIER:
@@ -96,6 +102,9 @@ ProgramNode parse(TokenList* tokens)
       break;
     }
     curr = curr->next;
+  }
+  if (state != GLOBAL) {
+    print_error("Still in function at end of token list. Missing brace?");
   }
   return prgm;
 }
@@ -181,6 +190,9 @@ ExpressionNode* construct_expression(TokenListNode* curr)
     exit(1);
   }
   int value_set = 0;
+  if(curr->tok.type == SEMICOLON) {
+    print_error("Invalid expression");
+  }
   while(curr->tok.type != SEMICOLON) {
     char* dummy;
     switch(curr->tok.type) {
