@@ -200,19 +200,37 @@ ExpressionNode* construct_expression(TokenListNode* curr)
       if(value_set) {
         print_error("Not a valid expression.");
       }
+      exp->type = INT_EXP;
       exp->int_value = atoi(curr->tok.value);
+      value_set = 1;
       break;
     case HEX_LITERAL:
       if(value_set) {
         print_error("Not a valid expression.");
       }
+      exp->type = INT_EXP;
       exp->int_value = strtol(curr->tok.value, &dummy, 16);
+      value_set = 1;
       break;
     case OCT_LITERAL:
       if(value_set) {
         print_error("Not a valid expression.");
       }
+      exp->type = INT_EXP;
       exp->int_value = strtol(curr->tok.value, &dummy, 8);
+      value_set = 1;
+      break;
+    case LOGICAL_NOT:
+      exp->type = LOG_NOT;
+      exp->unary_operand = construct_expression(curr->next);
+      break;
+    case BITWISE_NOT:
+      exp->type = BIT_NOT;
+      exp->unary_operand = construct_expression(curr->next);
+      break;
+    case MINUS:
+      exp->type = NEGATE;
+      exp->unary_operand = construct_expression(curr->next);
       break;
     default:
       print_error("Can only handle int literals right now.");
