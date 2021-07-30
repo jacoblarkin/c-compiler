@@ -107,6 +107,7 @@ void pretty_print(ProgramNode program)
       case RETURN_STATEMENT:
         printf("\treturn ");
         print_expression(stmt->return_value);
+        printf("\n");
         break;
       default:
         break;
