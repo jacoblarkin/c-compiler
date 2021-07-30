@@ -8,6 +8,7 @@
 void pretty_print(ProgramNode);
 void print_lexemes(TokenList*);
 void usage(void);
+void print_expression(ExpressionNode*);
 
 int main(int argc, char** argv)
 {
@@ -79,6 +80,17 @@ void print_lexemes(TokenList* lexemes)
     case OCT_LITERAL:
       printf("OCT_LITERAL: %s\n", curr->tok.value);
       break;
+    case MINUS:
+      puts("MINUS");
+      break;
+    case BITWISE_NOT:
+      puts("BITWISE_NOT");
+      break;
+    case LOGICAL_NOT:
+      puts("LOGICAL_NOT");
+      break;
+    default:
+      break;
     }
     curr = curr->next;
   }
@@ -93,11 +105,35 @@ void pretty_print(ProgramNode program)
       StatementNode* stmt = main->body[i];
       switch(stmt->type) {
       case RETURN_STATEMENT:
-        printf("\treturn %i", stmt->return_value->int_value);
+        printf("\treturn ");
+        print_expression(stmt->return_value);
         break;
       default:
         break;
       }
     }
+  }
+}
+
+void print_expression(ExpressionNode* exp)
+{
+  switch(exp->type) {
+  case INT_EXP:
+    printf("%i", exp->int_value);
+    break;
+  case NEGATE:
+    printf("-");
+    print_expression(exp->unary_operand);
+    break;
+  case LOG_NOT:
+    printf("!");
+    print_expression(exp->unary_operand);
+    break;
+  case BIT_NOT:
+    printf("~");
+    print_expression(exp->unary_operand);
+    break;
+  default:
+    break;
   }
 }
