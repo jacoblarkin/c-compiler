@@ -82,14 +82,15 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
     // cmp w0, 0
     // cset w0, eq
     // and w0, w0, 255 # probably not necessary
-    fprintf(as_file, "  cbz w%i, zero%i\n", reg, tag_counter);
-    fprintf(as_file, "  mov w%i, #0\n", reg);
-    fprintf(as_file, "  b endcmp%i\n", tag_counter);
-    fprintf(as_file, "zero%i:\n", tag_counter);
-    fprintf(as_file, "  mov w%i, #1\n", reg);
-    fprintf(as_file, "  b endcmp%i\n", tag_counter);
-    fprintf(as_file, "endcmp%i:\n", tag_counter);
-    tag_counter++;
+    fprintf(as_file, "  cmp w%i, 0\n  cset w%i, eq\n", reg, reg);
+//    fprintf(as_file, "  cbz w%i, zero%i\n", reg, tag_counter);
+//    fprintf(as_file, "  mov w%i, #0\n", reg);
+//    fprintf(as_file, "  b endcmp%i\n", tag_counter);
+//    fprintf(as_file, "zero%i:\n", tag_counter);
+//    fprintf(as_file, "  mov w%i, #1\n", reg);
+//    fprintf(as_file, "  b endcmp%i\n", tag_counter);
+//    fprintf(as_file, "endcmp%i:\n", tag_counter);
+//    tag_counter++;
     break;
   default:
     break;
