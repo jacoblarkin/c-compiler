@@ -195,6 +195,13 @@ ExpressionNode* construct_expression(TokenListNode* curr)
   }
   while(curr->tok.type != SEMICOLON) {
     char* dummy;
+    if(curr->next == NULL) {
+      print_error("Missing semicolon?");
+    }
+    if(value_set) {
+      curr = curr->next;
+      continue;
+    }
     switch(curr->tok.type) {
     case INT_LITERAL:
       if(value_set) {
@@ -223,20 +230,20 @@ ExpressionNode* construct_expression(TokenListNode* curr)
     case LOGICAL_NOT:
       exp->type = LOG_NOT;
       exp->unary_operand = construct_expression(curr->next);
+      value_set = 1;
       break;
     case BITWISE_NOT:
       exp->type = BIT_NOT;
       exp->unary_operand = construct_expression(curr->next);
+      value_set = 1;
       break;
     case MINUS:
       exp->type = NEGATE;
       exp->unary_operand = construct_expression(curr->next);
+      value_set = 1;
       break;
     default:
       print_error("Can only handle int literals right now.");
-    }
-    if(curr->next == NULL) {
-      print_error("Missing semicolon?");
     }
     curr = curr->next;
   }
