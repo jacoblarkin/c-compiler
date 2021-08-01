@@ -83,6 +83,15 @@ void print_lexemes(TokenList* lexemes)
     case MINUS:
       puts("MINUS");
       break;
+    case PLUS:
+      puts("PLUS");
+      break;
+    case STAR:
+      puts("STAR");
+      break;
+    case DIV:
+      puts("DIV");
+      break;
     case BITWISE_NOT:
       puts("BITWISE_NOT");
       break;
