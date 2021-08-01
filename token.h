@@ -16,7 +16,10 @@ typedef enum TokenType_t {
   OCT_LITERAL,
   LOGICAL_NOT,
   BITWISE_NOT,
-  MINUS
+  MINUS,
+  PLUS,
+  STAR,
+  DIV
 } TokenType;
 
 typedef struct Token_t {
