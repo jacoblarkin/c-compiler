@@ -30,6 +30,9 @@ struct operator_pair operators[] =
   {'(', LEFT_PAREN},
   {')', RIGHT_PAREN},
   {';', SEMICOLON},
+  {'!', LOGICAL_NOT},
+  {'~', BITWISE_NOT},
+  {'-', MINUS},
   { 0 , UNKNOWN}
 };
 
@@ -75,6 +78,9 @@ void lex_impl(TokenList* list, FILE* file)
     case LEFT_PAREN:
     case RIGHT_PAREN:
     case SEMICOLON:
+    case LOGICAL_NOT:
+    case BITWISE_NOT:
+    case MINUS:
     case INT:
     case RETURN:
       new_token.type = tt;

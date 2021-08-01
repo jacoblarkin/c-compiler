@@ -13,6 +13,7 @@ void print_error(const char*);
 FunctionNode* construct_function(TokenListNode*);
 StatementNode* construct_statement(TokenListNode*);
 ExpressionNode* construct_expression(TokenListNode*);
+int calculate_num_tokens(ExpressionNode*);
 
 ProgramNode parse(TokenList* tokens)
 {
@@ -164,20 +165,25 @@ StatementNode* construct_statement(TokenListNode* curr)
     perror("Error");
     exit(1);
   }
+  int tokens_used = 1;
   switch(curr->tok.type) {
   case RETURN:
     stmt->type = RETURN_STATEMENT;
     stmt->return_value = construct_expression(curr->next);
+    tokens_used += calculate_num_tokens(stmt->return_value);
     break;
   default:
     print_error("Can only handle returns statements right now.");
     break;
   }
-  while(curr->tok.type != SEMICOLON) {
+  for (int i = 0; i < tokens_used; i++) {
     if(curr->next == NULL) {
       print_error("Missing semicolon?");
     }
     curr = curr->next;
+  }
+  if (curr->tok.type != SEMICOLON) {
+    print_error("Invalid statement.");
   }
   return stmt;
 }
@@ -195,32 +201,63 @@ ExpressionNode* construct_expression(TokenListNode* curr)
   }
   while(curr->tok.type != SEMICOLON) {
     char* dummy;
+    if(curr->next == NULL) {
+      print_error("Missing semicolon?");
+    }
+    if(value_set) {
+      curr = curr->next;
+      continue;
+    }
     switch(curr->tok.type) {
     case INT_LITERAL:
-      if(value_set) {
-        print_error("Not a valid expression.");
-      }
+      exp->type = INT_EXP;
       exp->int_value = atoi(curr->tok.value);
+      value_set = 1;
       break;
     case HEX_LITERAL:
-      if(value_set) {
-        print_error("Not a valid expression.");
-      }
+      exp->type = INT_EXP;
       exp->int_value = strtol(curr->tok.value, &dummy, 16);
+      value_set = 1;
       break;
     case OCT_LITERAL:
-      if(value_set) {
-        print_error("Not a valid expression.");
-      }
+      exp->type = INT_EXP;
       exp->int_value = strtol(curr->tok.value, &dummy, 8);
+      value_set = 1;
+      break;
+    case LOGICAL_NOT:
+      exp->type = LOG_NOT;
+      exp->unary_operand = construct_expression(curr->next);
+      value_set = 1;
+      break;
+    case BITWISE_NOT:
+      exp->type = BIT_NOT;
+      exp->unary_operand = construct_expression(curr->next);
+      value_set = 1;
+      break;
+    case MINUS:
+      exp->type = NEGATE;
+      exp->unary_operand = construct_expression(curr->next);
+      value_set = 1;
       break;
     default:
       print_error("Can only handle int literals right now.");
     }
-    if(curr->next == NULL) {
-      print_error("Missing semicolon?");
-    }
     curr = curr->next;
   }
   return exp;
+}
+
+int calculate_num_tokens(ExpressionNode* exp)
+{
+  switch(exp->type)
+  {
+  case INT_EXP:
+    return 1;
+  case LOG_NOT:
+  case BIT_NOT:
+  case NEGATE:
+    return 1 + calculate_num_tokens(exp->unary_operand);
+  default:
+    print_error("Unrecognized expression type");
+  }
 }

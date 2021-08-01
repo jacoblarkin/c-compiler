@@ -12,8 +12,14 @@ EXE = compiler
 all: $(EXE)
 	@echo Compiler has been compiled! Executable is named compiler.
 
+debug: CFLAGS += -DDEBUG -g -O0
+debug: $(EXE)
+
 $(EXE): $(OBJS)
 	$(CC) $(CFLAGS) $(INCLUDES) -o $(EXE) $(OBJS) $(LFLAGS) $(LIBS)
 
 .c.o:
 	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+clean:
+	rm -f *.o $(EXE)

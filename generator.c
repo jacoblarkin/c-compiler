@@ -15,6 +15,8 @@ void write_ast_assembly(ProgramNode, FILE*);
 void write_statement_assembly(StatementNode*, FILE*);
 void write_expression_assembly(Register, ExpressionNode*, FILE*);
 
+int tag_counter = 0;
+
 void generate_assembly(ProgramNode prgm, const char* filename)
 {
   int len = strlen(filename);
@@ -65,6 +67,29 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
   switch(exp->type) {
   case INT_EXP:
     fprintf(as_file, "  mov w%i, #%i\n", reg, exp->int_value);
+    break;
+  case NEGATE:
+    write_expression_assembly(reg, exp->unary_operand, as_file);
+    fprintf(as_file, "  neg w%i, w%i\n", reg, reg);
+    break;
+  case BIT_NOT:
+    write_expression_assembly(reg, exp->unary_operand, as_file);
+    fprintf(as_file, "  mvn w%i, w%i\n", reg, reg);
+    break;
+  case LOG_NOT:
+    write_expression_assembly(reg, exp->unary_operand, as_file);
+    // From GCC
+    // cmp w0, 0
+    // cset w0, eq
+    // and w0, w0, 255 # probably not necessary
+    fprintf(as_file, "  cbz w%i, zero%i\n", reg, tag_counter);
+    fprintf(as_file, "  mov w%i, #0\n", reg);
+    fprintf(as_file, "  b endcmp%i\n", tag_counter);
+    fprintf(as_file, "zero%i:\n", tag_counter);
+    fprintf(as_file, "  mov w%i, #1\n", reg);
+    fprintf(as_file, "  b endcmp%i\n", tag_counter);
+    fprintf(as_file, "endcmp%i:\n", tag_counter);
+    tag_counter++;
     break;
   default:
     break;
