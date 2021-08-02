@@ -35,7 +35,7 @@ struct operator_pair operators[] =
   {'-', MINUS},
   {'+', PLUS},
   {'*', STAR},
-  {'/', DIV},
+  {'/', SLASH},
   { 0 , UNKNOWN}
 };
 
@@ -86,7 +86,7 @@ void lex_impl(TokenList* list, FILE* file)
     case MINUS:
     case PLUS:
     case STAR:
-    case DIV:
+    case SLASH:
     case INT:
     case RETURN:
       new_token.type = tt;

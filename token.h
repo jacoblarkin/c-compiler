@@ -19,7 +19,7 @@ typedef enum TokenType_t {
   MINUS,
   PLUS,
   STAR,
-  DIV
+  SLASH
 } TokenType;
 
 typedef struct Token_t {
