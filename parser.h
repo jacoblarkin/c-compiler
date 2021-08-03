@@ -6,10 +6,14 @@
 #include <stdlib.h>
 
 typedef enum ExpressionType_t {
-  INT_EXP,
+  INT_VALUE,
   NEGATE,
   LOG_NOT,
-  BIT_NOT
+  BITWISE_COMP,
+  ADD_BINEXP,
+  SUB_BINEXP,
+  MUL_BINEXP,
+  DIV_BINEXP
 } ExpressionType;
 
 typedef enum StatementType_t {
@@ -25,6 +29,10 @@ typedef struct ExpressionNode_t {
   union {
     int int_value;
     struct ExpressionNode_t *unary_operand;
+    struct { // For binary operators
+      struct ExpressionNode_t *left_operand;
+      struct ExpressionNode_t *right_operand;
+    };
   };
 } ExpressionNode;
 
