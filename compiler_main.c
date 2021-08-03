@@ -133,15 +133,21 @@ void print_expression(ExpressionNode* exp)
     break;
   case NEGATE:
     printf("-");
+    printf("(");
     print_expression(exp->unary_operand);
+    printf(")");
     break;
   case LOG_NOT:
     printf("!");
+    printf("(");
     print_expression(exp->unary_operand);
+    printf(")");
     break;
   case BITWISE_COMP:
     printf("~");
+    printf("(");
     print_expression(exp->unary_operand);
+    printf(")");
     break;
   case ADD_BINEXP:
     printf("(");
