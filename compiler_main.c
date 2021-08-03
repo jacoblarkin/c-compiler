@@ -143,6 +143,34 @@ void print_expression(ExpressionNode* exp)
     printf("~");
     print_expression(exp->unary_operand);
     break;
+  case ADD_BINEXP:
+    printf("(");
+    print_expression(exp->left_operand);
+    printf(") + (");
+    print_expression(exp->right_operand);
+    printf(")");
+    break;
+  case SUB_BINEXP:
+    printf("(");
+    print_expression(exp->left_operand);
+    printf(") - (");
+    print_expression(exp->right_operand);
+    printf(")");
+    break;
+  case MUL_BINEXP:
+    printf("(");
+    print_expression(exp->left_operand);
+    printf(") * (");
+    print_expression(exp->right_operand);
+    printf(")");
+    break;
+  case DIV_BINEXP:
+    printf("(");
+    print_expression(exp->left_operand);
+    printf(") / (");
+    print_expression(exp->right_operand);
+    printf(")");
+    break;
   default:
     break;
   }
