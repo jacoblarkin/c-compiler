@@ -210,17 +210,17 @@ ExpressionNode* construct_expression(TokenListNode* curr)
     }
     switch(curr->tok.type) {
     case INT_LITERAL:
-      exp->type = INT_EXP;
+      exp->type = INT_VALUE;
       exp->int_value = atoi(curr->tok.value);
       value_set = 1;
       break;
     case HEX_LITERAL:
-      exp->type = INT_EXP;
+      exp->type = INT_VALUE;
       exp->int_value = strtol(curr->tok.value, &dummy, 16);
       value_set = 1;
       break;
     case OCT_LITERAL:
-      exp->type = INT_EXP;
+      exp->type = INT_VALUE;
       exp->int_value = strtol(curr->tok.value, &dummy, 8);
       value_set = 1;
       break;
@@ -230,7 +230,7 @@ ExpressionNode* construct_expression(TokenListNode* curr)
       value_set = 1;
       break;
     case BITWISE_NOT:
-      exp->type = BIT_NOT;
+      exp->type = BITWISE_COMP;
       exp->unary_operand = construct_expression(curr->next);
       value_set = 1;
       break;
@@ -251,13 +251,14 @@ int calculate_num_tokens(ExpressionNode* exp)
 {
   switch(exp->type)
   {
-  case INT_EXP:
+  case INT_VALUE:
     return 1;
   case LOG_NOT:
-  case BIT_NOT:
+  case BITWISE_COMP:
   case NEGATE:
     return 1 + calculate_num_tokens(exp->unary_operand);
   default:
     print_error("Unrecognized expression type");
   }
+  return 0;
 }

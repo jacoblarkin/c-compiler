@@ -65,14 +65,14 @@ void write_statement_assembly(StatementNode* stmt, FILE* as_file)
 void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
 {
   switch(exp->type) {
-  case INT_EXP:
+  case INT_VALUE:
     fprintf(as_file, "  mov w%i, #%i\n", reg, exp->int_value);
     break;
   case NEGATE:
     write_expression_assembly(reg, exp->unary_operand, as_file);
     fprintf(as_file, "  neg w%i, w%i\n", reg, reg);
     break;
-  case BIT_NOT:
+  case BITWISE_COMP:
     write_expression_assembly(reg, exp->unary_operand, as_file);
     fprintf(as_file, "  mvn w%i, w%i\n", reg, reg);
     break;

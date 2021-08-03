@@ -128,7 +128,7 @@ void pretty_print(ProgramNode program)
 void print_expression(ExpressionNode* exp)
 {
   switch(exp->type) {
-  case INT_EXP:
+  case INT_VALUE:
     printf("%i", exp->int_value);
     break;
   case NEGATE:
@@ -139,7 +139,7 @@ void print_expression(ExpressionNode* exp)
     printf("!");
     print_expression(exp->unary_operand);
     break;
-  case BIT_NOT:
+  case BITWISE_COMP:
     printf("~");
     print_expression(exp->unary_operand);
     break;
