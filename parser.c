@@ -31,7 +31,6 @@ ProgramNode parse(TokenList* tokens)
   ProgramNode prgm;
   prgm.main = NULL;
   curr = tokens->first;
-  State state = GLOBAL;
   int depth = 0;
   int pdepth = 0;
   FunctionNode* current_func;
@@ -45,9 +44,6 @@ ProgramNode parse(TokenList* tokens)
       break;
     case RIGHT_BRACE:
       depth--;
-      if(state == FUNCTION && depth == 0) {
-        state = GLOBAL;
-      }
       break;
     case LEFT_PAREN:
       pdepth++;
@@ -58,25 +54,17 @@ ProgramNode parse(TokenList* tokens)
     case SEMICOLON:
       break;
     case INT:
-      if(state == GLOBAL) {
-        if(curr->next->tok.type != IDENTIFIER) {
-          print_error("Expected name next to int.");
-        }
-        if(curr->next->next->tok.type != LEFT_PAREN) {
-          print_error("Cannot handle global vars.");
-        }
-        if(strncmp(curr->next->tok.value, "main", 5)) {
-          print_error("Can only declare main function for now.");
-        }
-        if(prgm.main != NULL) {
-          print_error("More than one main function.");
-        }
-        prgm.main = construct_function();
-        current_func = prgm.main;
-        state = FUNCTION;
-      } else {
-        print_error("Cannot handle non-global use of int keyword.");
+      if(curr->next->next->tok.type != LEFT_PAREN) {
+        print_error("Cannot handle global vars.");
       }
+      if(strncmp(curr->next->tok.value, "main", 5)) {
+        print_error("Can only declare main function for now.");
+      }
+      if(prgm.main != NULL) {
+        print_error("More than one main function.");
+      }
+      prgm.main = construct_function();
+      current_func = prgm.main;
       break;
     case IDENTIFIER:
       print_error("Cannot handle most statements right now.");
@@ -90,9 +78,6 @@ ProgramNode parse(TokenList* tokens)
       break;
     }
     curr = curr->next;
-  }
-  if (state != GLOBAL) {
-    print_error("Still in function at end of token list. Missing brace?");
   }
   return prgm;
 }
@@ -150,6 +135,7 @@ FunctionNode* construct_function()
                            sizeof(StatementNode*) * func->capacity);
     }
     func->body[func->num_statements++] = construct_statement();
+    curr = curr->next;
   }
   return func;
 }
@@ -168,7 +154,7 @@ StatementNode* construct_statement()
     stmt->return_value = construct_expression();
     break;
   default:
-    print_error("Can only handle returns statements right now.");
+    print_error("Can only handle return statements right now.");
     break;
   }
   if (curr->tok.type != SEMICOLON) {
@@ -278,7 +264,9 @@ ExpressionNode* parse_primary_expression()
       print_error("Missing parenthesis");
     }
     curr = curr->next;
-    return parse_operators();
+    ExpressionNode* tmp = parse_operators();
+    curr = curr->next; // Move past right paren
+    return tmp;
   default: 
     print_error("Cannot parse this primary expression.");
   }
