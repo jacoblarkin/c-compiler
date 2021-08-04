@@ -14,6 +14,7 @@ typedef enum Register_t {
 void write_ast_assembly(ProgramNode, FILE*);
 void write_statement_assembly(StatementNode*, FILE*);
 void write_expression_assembly(Register, ExpressionNode*, FILE*);
+void check_next_reg(Register);
 
 int tag_counter = 0;
 
@@ -91,7 +92,39 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
     fprintf(as_file, "endcmp%i:\n", tag_counter);
     tag_counter++;
     break;
+  case ADD_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  add w%i, w%i, w%i\n", reg, reg, reg+1);
+    break;
+  case SUB_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  sub w%i, w%i, w%i\n", reg, reg, reg+1);
+    break;
+  case MUL_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  mul w%i, w%i, w%i\n", reg, reg, reg+1);
+    break;
+  case DIV_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  sdiv w%i, w%i, w%i\n", reg, reg, reg+1);
+    break;
   default:
     break;
+  }
+}
+
+void check_next_reg(Register reg)
+{
+  if(reg+1 > 18) {
+    puts("Error:  Can only handle up to 18 registers right now");
+    exit(1);
   }
 }
