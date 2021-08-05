@@ -19,7 +19,15 @@ typedef enum TokenType_t {
   MINUS,
   PLUS,
   STAR,
-  SLASH
+  SLASH,
+  EQUAL,
+  NOTEQUAL,
+  AND,
+  OR,
+  LESSTHAN,
+  LEQ,
+  GREATERTHAN,
+  GEQ
 } TokenType;
 
 typedef struct Token_t {
