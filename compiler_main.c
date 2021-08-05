@@ -92,6 +92,30 @@ void print_lexemes(TokenList* lexemes)
     case SLASH:
       puts("SLASH");
       break;
+    case EQUAL:
+      puts("EQUAL");
+      break;
+    case NOTEQUAL:
+      puts("NOTEQUAL");
+      break;
+    case AND:
+      puts("AND");
+      break;
+    case OR:
+      puts("OR");
+      break;
+    case LESSTHAN:
+      puts("LESSTHAN");
+      break;
+    case LEQ:
+      puts("LEQ");
+      break;
+    case GREATERTHAN:
+      puts("GREATERTHAN");
+      break;
+    case GEQ:
+      puts("GEQ");
+      break;
     case BITWISE_NOT:
       puts("BITWISE_NOT");
       break;
