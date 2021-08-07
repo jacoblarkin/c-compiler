@@ -201,6 +201,62 @@ void print_expression(ExpressionNode* exp)
     print_expression(exp->right_operand);
     printf(")");
     break;
+  case EQ_BINEXP:
+    printf("(");
+    print_expression(exp->left_operand);
+    printf(") EQ (");
+    print_expression(exp->right_operand);
+    printf(")");
+    break;
+  case NEQ_BINEXP:
+    printf("(");
+    print_expression(exp->left_operand);
+    printf(") NEQ (");
+    print_expression(exp->right_operand);
+    printf(")");
+    break;
+  case GT_BINEXP:
+    printf("(");
+    print_expression(exp->left_operand);
+    printf(") > (");
+    print_expression(exp->right_operand);
+    printf(")");
+    break;
+  case GEQ_BINEXP:
+    printf("(");
+    print_expression(exp->left_operand);
+    printf(") >= (");
+    print_expression(exp->right_operand);
+    printf(")");
+    break;
+  case LT_BINEXP:
+    printf("(");
+    print_expression(exp->left_operand);
+    printf(") < (");
+    print_expression(exp->right_operand);
+    printf(")");
+    break;
+  case LEQ_BINEXP:
+    printf("(");
+    print_expression(exp->left_operand);
+    printf(") <= (");
+    print_expression(exp->right_operand);
+    printf(")");
+    break;
+  case AND_BINEXP:
+    printf("(");
+    print_expression(exp->left_operand);
+    printf(") AND (");
+    print_expression(exp->right_operand);
+    printf(")");
+    break;
+  case OR_BINEXP:
+    printf("(");
+    print_expression(exp->left_operand);
+    printf(") OR (");
+    print_expression(exp->right_operand);
+    printf(")");
+    break;
   default:
     break;
   }
