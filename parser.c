@@ -321,9 +321,21 @@ int operator_precedence(Token op)
   switch(op.type) {
   case STAR:
   case SLASH:
-    return 2;
+    return 6;
   case PLUS:
   case MINUS:
+    return 5;
+  case LESSTHAN:
+  case LEQ:
+  case GREATERTHAN:
+  case GEQ:
+    return 4;
+  case EQUAL:
+  case NOTEQUAL:
+    return 3;
+  case AND:
+    return 2;
+  case OR:
     return 1;
   case RIGHT_PAREN:
   case SEMICOLON:
@@ -353,6 +365,30 @@ ExpressionNode* construct_binary_expression(Token op, ExpressionNode* lhs,
       break;
     case SLASH:
       binary_exp->type = DIV_BINEXP;
+      break;
+    case EQUAL:
+      binary_exp->type = EQ_BINEXP;
+      break;
+    case NOTEQUAL:
+      binary_exp->type = NEQ_BINEXP;
+      break;
+    case LESSTHAN:
+      binary_exp->type = LT_BINEXP;
+      break;
+    case LEQ:
+      binary_exp->type = LEQ_BINEXP;
+      break;
+    case GREATERTHAN:
+      binary_exp->type = GT_BINEXP;
+      break;
+    case GEQ:
+      binary_exp->type = GEQ_BINEXP;
+      break;
+    case AND:
+      binary_exp->type = AND_BINEXP;
+      break;
+    case OR:
+      binary_exp->type = OR_BINEXP;
       break;
     default:
       print_error("Unknown operator.");

@@ -13,7 +13,15 @@ typedef enum ExpressionType_t {
   ADD_BINEXP,
   SUB_BINEXP,
   MUL_BINEXP,
-  DIV_BINEXP
+  DIV_BINEXP,
+  EQ_BINEXP,
+  NEQ_BINEXP,
+  GT_BINEXP,
+  GEQ_BINEXP,
+  LT_BINEXP,
+  LEQ_BINEXP,
+  AND_BINEXP,
+  OR_BINEXP
 } ExpressionType;
 
 typedef enum StatementType_t {
