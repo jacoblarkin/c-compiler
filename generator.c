@@ -116,6 +116,64 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
     write_expression_assembly(reg+1, exp->right_operand, as_file);
     fprintf(as_file, "  sdiv w%i, w%i, w%i\n", reg, reg, reg+1);
     break;
+  case EQ_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  cmp w%i, w%i\n", reg, reg+1);
+    fprintf(as_file, "  cset w%i, eq\n", reg);
+    break;
+  case NEQ_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  cmp w%i, w%i\n", reg, reg+1);
+    fprintf(as_file, "  cset w%i, ne\n", reg);
+    break;
+  case GT_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  cmp w%i, w%i\n", reg, reg+1);
+    fprintf(as_file, "  cset w%i, gt\n", reg);
+    break;
+  case GEQ_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  cmp w%i, w%i\n", reg, reg+1);
+    fprintf(as_file, "  cset w%i, ge\n", reg);
+    break;
+  case LT_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  cmp w%i, w%i\n", reg, reg+1);
+    fprintf(as_file, "  cset w%i, lt\n", reg);
+    break;
+  case LEQ_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  cmp w%i, w%i\n", reg, reg+1);
+    fprintf(as_file, "  cset w%i, le\n", reg);
+    break;
+  case AND_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  cmp w%i, 0\n", reg);
+    fprintf(as_file, "  ccmp w%i, 0, 4, ne\n", reg+1);
+    fprintf(as_file, "  cset w%i, ne\n", reg);
+    break;
+  case OR_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  orr w%i, w%i, w%i\n", reg, reg, reg+1);
+    fprintf(as_file, "  cmp w%i, 0\n", reg);
+    fprintf(as_file, "  cset w%i, ne\n", reg);
+    break;
   default:
     break;
   }
