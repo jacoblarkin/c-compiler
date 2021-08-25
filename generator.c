@@ -116,6 +116,14 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
     write_expression_assembly(reg+1, exp->right_operand, as_file);
     fprintf(as_file, "  sdiv w%i, w%i, w%i\n", reg, reg, reg+1);
     break;
+  case MOD_BINEXP:
+    check_next_reg(reg);
+    check_next_reg(reg+1);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  sdiv w%i, w%i, w%i\n", reg+2, reg, reg+1);
+    fprintf(as_file, "  msub w%i, w%i, w%i, w%i\n", reg, reg+1, reg+2, reg);
+    break;
   case EQ_BINEXP:
     check_next_reg(reg);
     write_expression_assembly(reg, exp->left_operand, as_file);
@@ -173,6 +181,36 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
     fprintf(as_file, "  orr w%i, w%i, w%i\n", reg, reg, reg+1);
     fprintf(as_file, "  cmp w%i, 0\n", reg);
     fprintf(as_file, "  cset w%i, ne\n", reg);
+    break;
+  case BITAND_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  and w%i, w%i, w%i\n", reg, reg, reg+1);
+    break;
+  case BITOR_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  orr w%i, w%i, w%i\n", reg, reg, reg+1);
+    break;
+  case BITXOR_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  eor w%i, w%i, w%i\n", reg, reg, reg+1);
+    break;
+  case LSHIFT_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  lsl w%i, w%i, w%i\n", reg, reg, reg+1);
+    break;
+  case RSHIFT_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  asr w%i, w%i, w%i\n", reg, reg, reg+1);
     break;
   default:
     break;
