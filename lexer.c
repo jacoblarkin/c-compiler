@@ -12,7 +12,7 @@ struct keyword_pair {
 };
 
 struct operator_pair {
-  char key;
+  const char* key;
   TokenType type;
 };
 
@@ -25,14 +25,31 @@ struct keyword_pair keywords[] =
 
 struct operator_pair operators[] = 
 {
-  {'{', LEFT_BRACE},
-  {'}', RIGHT_BRACE},
-  {'(', LEFT_PAREN},
-  {')', RIGHT_PAREN},
-  {';', SEMICOLON},
-  {'!', LOGICAL_NOT},
-  {'~', BITWISE_NOT},
-  {'-', MINUS},
+  {"{", LEFT_BRACE},
+  {"}", RIGHT_BRACE},
+  {"(", LEFT_PAREN},
+  {")", RIGHT_PAREN},
+  {";", SEMICOLON},
+  {"!", LOGICAL_NOT},
+  {"~", BITWISE_NOT},
+  {"-", MINUS},
+  {"+", PLUS},
+  {"*", STAR},
+  {"/", SLASH},
+  {"&&", AND},
+  {"||", OR},
+  {"==", EQUAL},
+  {"!=", NOTEQUAL},
+  {"<", LESSTHAN},
+  {"<=", LEQ},
+  {">", GREATERTHAN},
+  {">=", GEQ},
+  {"%", MOD},
+  {"&", BIT_AND},
+  {"|", BIT_OR},
+  {"^", BIT_XOR},
+  {"<<", LSHIFT},
+  {">>", RSHIFT},
   { 0 , UNKNOWN}
 };
 
@@ -81,6 +98,23 @@ void lex_impl(TokenList* list, FILE* file)
     case LOGICAL_NOT:
     case BITWISE_NOT:
     case MINUS:
+    case PLUS:
+    case STAR:
+    case SLASH:
+    case EQUAL:
+    case NOTEQUAL:
+    case AND:
+    case OR:
+    case LESSTHAN:
+    case LEQ:
+    case GREATERTHAN:
+    case GEQ:
+    case MOD:
+    case BIT_AND:
+    case BIT_OR:
+    case BIT_XOR:
+    case LSHIFT:
+    case RSHIFT:
     case INT:
     case RETURN:
       new_token.type = tt;
@@ -126,6 +160,14 @@ char* get_next_token(FILE* file)
       if(char_count == 0) {
         ret[0] = c;
         char_count++;
+        fgetpos(file, &prev);
+        c = fgetc(file);
+        if(is_operator(c) && c != ')' && c != '}' && c != '(' && c != '{') {
+          ret[1] = c;
+          char_count++;
+        } else {
+          fsetpos(file, &prev);  
+        }
         break;
       }
       fsetpos(file, &prev);
@@ -154,7 +196,7 @@ TokenType get_token_type(const char* tok)
     return INT_LITERAL;
   }
   for(int i = 0; operators[i].key; i++) {
-    if(tok[0] == operators[i].key) {
+    if(strcmp(tok, operators[i].key) == 0) {
       return operators[i].type;
     }
   }
@@ -170,7 +212,7 @@ TokenType get_token_type(const char* tok)
 int is_operator(char c)
 {
   for(int i = 0; operators[i].key; i++) {
-    if(c == operators[i].key) {
+    if(c == operators[i].key[0]) {
       return 1;
     }
   }

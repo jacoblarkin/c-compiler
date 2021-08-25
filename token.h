@@ -16,7 +16,24 @@ typedef enum TokenType_t {
   OCT_LITERAL,
   LOGICAL_NOT,
   BITWISE_NOT,
-  MINUS
+  MINUS,
+  PLUS,
+  STAR,
+  SLASH,
+  EQUAL,
+  NOTEQUAL,
+  AND,
+  OR,
+  LESSTHAN,
+  LEQ,
+  GREATERTHAN,
+  GEQ,
+  MOD,
+  BIT_AND,
+  BIT_OR,
+  BIT_XOR,
+  LSHIFT,
+  RSHIFT
 } TokenType;
 
 typedef struct Token_t {

@@ -14,6 +14,7 @@ typedef enum Register_t {
 void write_ast_assembly(ProgramNode, FILE*);
 void write_statement_assembly(StatementNode*, FILE*);
 void write_expression_assembly(Register, ExpressionNode*, FILE*);
+void check_next_reg(Register);
 
 int tag_counter = 0;
 
@@ -65,14 +66,14 @@ void write_statement_assembly(StatementNode* stmt, FILE* as_file)
 void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
 {
   switch(exp->type) {
-  case INT_EXP:
+  case INT_VALUE:
     fprintf(as_file, "  mov w%i, #%i\n", reg, exp->int_value);
     break;
   case NEGATE:
     write_expression_assembly(reg, exp->unary_operand, as_file);
     fprintf(as_file, "  neg w%i, w%i\n", reg, reg);
     break;
-  case BIT_NOT:
+  case BITWISE_COMP:
     write_expression_assembly(reg, exp->unary_operand, as_file);
     fprintf(as_file, "  mvn w%i, w%i\n", reg, reg);
     break;
@@ -92,7 +93,135 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
 //    fprintf(as_file, "endcmp%i:\n", tag_counter);
 //    tag_counter++;
     break;
+  case ADD_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  add w%i, w%i, w%i\n", reg, reg, reg+1);
+    break;
+  case SUB_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  sub w%i, w%i, w%i\n", reg, reg, reg+1);
+    break;
+  case MUL_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  mul w%i, w%i, w%i\n", reg, reg, reg+1);
+    break;
+  case DIV_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  sdiv w%i, w%i, w%i\n", reg, reg, reg+1);
+    break;
+  case MOD_BINEXP:
+    check_next_reg(reg);
+    check_next_reg(reg+1);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  sdiv w%i, w%i, w%i\n", reg+2, reg, reg+1);
+    fprintf(as_file, "  msub w%i, w%i, w%i, w%i\n", reg, reg+1, reg+2, reg);
+    break;
+  case EQ_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  cmp w%i, w%i\n", reg, reg+1);
+    fprintf(as_file, "  cset w%i, eq\n", reg);
+    break;
+  case NEQ_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  cmp w%i, w%i\n", reg, reg+1);
+    fprintf(as_file, "  cset w%i, ne\n", reg);
+    break;
+  case GT_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  cmp w%i, w%i\n", reg, reg+1);
+    fprintf(as_file, "  cset w%i, gt\n", reg);
+    break;
+  case GEQ_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  cmp w%i, w%i\n", reg, reg+1);
+    fprintf(as_file, "  cset w%i, ge\n", reg);
+    break;
+  case LT_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  cmp w%i, w%i\n", reg, reg+1);
+    fprintf(as_file, "  cset w%i, lt\n", reg);
+    break;
+  case LEQ_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  cmp w%i, w%i\n", reg, reg+1);
+    fprintf(as_file, "  cset w%i, le\n", reg);
+    break;
+  case AND_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  cmp w%i, 0\n", reg);
+    fprintf(as_file, "  ccmp w%i, 0, 4, ne\n", reg+1);
+    fprintf(as_file, "  cset w%i, ne\n", reg);
+    break;
+  case OR_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  orr w%i, w%i, w%i\n", reg, reg, reg+1);
+    fprintf(as_file, "  cmp w%i, 0\n", reg);
+    fprintf(as_file, "  cset w%i, ne\n", reg);
+    break;
+  case BITAND_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  and w%i, w%i, w%i\n", reg, reg, reg+1);
+    break;
+  case BITOR_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  orr w%i, w%i, w%i\n", reg, reg, reg+1);
+    break;
+  case BITXOR_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  eor w%i, w%i, w%i\n", reg, reg, reg+1);
+    break;
+  case LSHIFT_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  lsl w%i, w%i, w%i\n", reg, reg, reg+1);
+    break;
+  case RSHIFT_BINEXP:
+    check_next_reg(reg);
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  asr w%i, w%i, w%i\n", reg, reg, reg+1);
+    break;
   default:
     break;
+  }
+}
+
+void check_next_reg(Register reg)
+{
+  if(reg+1 > 18) {
+    puts("Error:  Can only handle up to 18 registers right now");
+    exit(1);
   }
 }

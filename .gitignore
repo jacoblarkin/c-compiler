@@ -57,3 +57,6 @@ test_compiler.sh
 
 # Ignore executable
 compiler
+
+# Vim files
+*.swp
