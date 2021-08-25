@@ -27,7 +27,13 @@ typedef enum TokenType_t {
   LESSTHAN,
   LEQ,
   GREATERTHAN,
-  GEQ
+  GEQ,
+  MOD,
+  BIT_AND,
+  BIT_OR,
+  BIT_XOR,
+  LSHIFT,
+  RSHIFT
 } TokenType;
 
 typedef struct Token_t {
