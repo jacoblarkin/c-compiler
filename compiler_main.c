@@ -122,6 +122,24 @@ void print_lexemes(TokenList* lexemes)
     case LOGICAL_NOT:
       puts("LOGICAL_NOT");
       break;
+    case MOD:
+      puts("MOD");
+      break;
+    case BIT_AND:
+      puts("BIT_AND");
+      break;
+    case BIT_OR:
+      puts("BIT_OR");
+      break;
+    case BIT_XOR:
+      puts("BIT_XOR");
+      break;
+    case LSHIFT:
+      puts("LSHIFT");
+      break;
+    case RSHIFT:
+      puts("RSHIFT");
+      break;
     default:
       break;
     }
@@ -201,6 +219,13 @@ void print_expression(ExpressionNode* exp)
     print_expression(exp->right_operand);
     printf(")");
     break;
+  case MOD_BINEXP:
+    printf("(");
+    print_expression(exp->left_operand);
+    printf(") MOD (");
+    print_expression(exp->right_operand);
+    printf(")");
+    break;
   case EQ_BINEXP:
     printf("(");
     print_expression(exp->left_operand);
@@ -254,6 +279,41 @@ void print_expression(ExpressionNode* exp)
     printf("(");
     print_expression(exp->left_operand);
     printf(") OR (");
+    print_expression(exp->right_operand);
+    printf(")");
+    break;
+  case BITAND_BINEXP:
+    printf("(");
+    print_expression(exp->left_operand);
+    printf(") BITAND (");
+    print_expression(exp->right_operand);
+    printf(")");
+    break;
+  case BITOR_BINEXP:
+    printf("(");
+    print_expression(exp->left_operand);
+    printf(") BITOR (");
+    print_expression(exp->right_operand);
+    printf(")");
+    break;
+  case BITXOR_BINEXP:
+    printf("(");
+    print_expression(exp->left_operand);
+    printf(") BITXOR (");
+    print_expression(exp->right_operand);
+    printf(")");
+    break;
+  case LSHIFT_BINEXP:
+    printf("(");
+    print_expression(exp->left_operand);
+    printf(") LSHIFT (");
+    print_expression(exp->right_operand);
+    printf(")");
+    break;
+  case RSHIFT_BINEXP:
+    printf("(");
+    print_expression(exp->left_operand);
+    printf(") RSHIFT (");
     print_expression(exp->right_operand);
     printf(")");
     break;
