@@ -21,7 +21,13 @@ typedef enum ExpressionType_t {
   LT_BINEXP,
   LEQ_BINEXP,
   AND_BINEXP,
-  OR_BINEXP
+  OR_BINEXP,
+  MOD_BINEXP,
+  BITAND_BINEXP,
+  BITOR_BINEXP,
+  BITXOR_BINEXP,
+  LSHIFT_BINEXP,
+  RSHIFT_BINEXP
 } ExpressionType;
 
 typedef enum StatementType_t {
