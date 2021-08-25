@@ -44,6 +44,12 @@ struct operator_pair operators[] =
   {"<=", LEQ},
   {">", GREATERTHAN},
   {">=", GEQ},
+  {"%", MOD},
+  {"&", BIT_AND},
+  {"|", BIT_OR},
+  {"^", BIT_XOR},
+  {"<<", LSHIFT},
+  {">>", RSHIFT},
   { 0 , UNKNOWN}
 };
 
@@ -103,6 +109,12 @@ void lex_impl(TokenList* list, FILE* file)
     case LEQ:
     case GREATERTHAN:
     case GEQ:
+    case MOD:
+    case BIT_AND:
+    case BIT_OR:
+    case BIT_XOR:
+    case LSHIFT:
+    case RSHIFT:
     case INT:
     case RETURN:
       new_token.type = tt;
