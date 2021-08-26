@@ -22,6 +22,8 @@ ExpressionNode* construct_binary_expression(Token, ExpressionNode*, ExpressionNo
 ExpressionNode* parse_number(Token);
 ExpressionNode* parse_unary_operator(void);
 int find_right_paren(void);
+ExpressionNode* parse_assignment(void);
+ExpressionNode* parse_var(void);
 
 // Current Node in token list
 TokenListNode* curr;
@@ -153,8 +155,24 @@ StatementNode* construct_statement()
     curr = curr->next;
     stmt->return_value = construct_expression();
     break;
+  case INT:
+    stmt->type = DECLARATION;
+    stmt->var_type = INT_VAR;
+    curr = curr->next;
+    if(curr->tok.type != IDENTIFIER) {
+      print_error("Expected identifier to declar var.");
+    }
+    stmt->var_name = curr->tok.value;
+    stmt->assignment_expression = NULL;
+    if(curr->next->tok.type == ASSIGN) {
+      stmt->assignment_expression = construct_expression();
+    } else {
+      curr = curr->next;
+    }
+    break;
   default:
-    print_error("Can only handle return statements right now.");
+    stmt->type = EXPRESSION;
+    stmt->expression = construct_expression();
     break;
   }
   if (curr->tok.type != SEMICOLON) {
@@ -181,6 +199,7 @@ ExpressionNode* construct_expression()
   case BITWISE_NOT:
   case MINUS:
   case LEFT_PAREN:
+  case IDENTIFIER:
     exp = parse_operators();
     break;
   default:
@@ -247,6 +266,38 @@ ExpressionNode* parse_unary_operator()
   return unary_op;
 }
 
+ExpressionNode* parse_assignment()
+{
+  ExpressionNode* assignment = malloc(sizeof(ExpressionNode));
+  if(!assignment) {
+    perror("Error");
+    exit(1);
+  }
+  TokenType prev_type = curr->prev->tok.type;
+  // Eventually add COMMA, +=, -=, *=, /=, %=, &=, |=, ^=, <<=, >>=
+  if(prev_type != ASSIGN && prev_type != SEMICOLON) {
+    print_error("Invalid lvalue for assignment.");
+  }
+  assignment->type = ASSIGN_EXP;
+  assignment->var_name = curr->tok.value;
+  curr = curr->next->next;
+  assignment->assigned_exp = construct_expression();
+  return assignment;
+}
+
+ExpressionNode* parse_var()
+{
+  ExpressionNode* variable = malloc(sizeof(ExpressionNode));
+  if(!variable) {
+    perror("Error");
+    exit(1);
+  }
+  variable->type = VAR_EXP;
+  variable->var_name = curr->tok.value;
+  curr = curr->next;
+  return variable;
+}
+
 ExpressionNode* parse_primary_expression()
 {
   Token tok = curr->tok;
@@ -259,6 +310,9 @@ ExpressionNode* parse_primary_expression()
   case BITWISE_NOT:
   case MINUS:
     return parse_unary_operator();
+  case IDENTIFIER:
+    return (curr->next->tok.type == ASSIGN ? parse_assignment() 
+                                           : parse_var());
   case LEFT_PAREN:
     if(!find_right_paren()) {
       print_error("Missing parenthesis");
