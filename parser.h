@@ -69,7 +69,7 @@ typedef struct StatementNode_t {
     struct {  // Declare var
       VarType var_type;
       char* var_name;
-      ExpressionNode* assignment_expresssion;
+      ExpressionNode* assignment_expression;
     };
     ExpressionNode* expression;
   };
