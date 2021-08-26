@@ -33,7 +33,8 @@ typedef enum TokenType_t {
   BIT_OR,
   BIT_XOR,
   LSHIFT,
-  RSHIFT
+  RSHIFT,
+  ASSIGN
 } TokenType;
 
 typedef struct Token_t {
