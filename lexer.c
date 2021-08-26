@@ -30,6 +30,7 @@ struct operator_pair operators[] =
   {"(", LEFT_PAREN},
   {")", RIGHT_PAREN},
   {";", SEMICOLON},
+  {"=", ASSIGN},
   {"!", LOGICAL_NOT},
   {"~", BITWISE_NOT},
   {"-", MINUS},
@@ -97,6 +98,7 @@ void lex_impl(TokenList* list, FILE* file)
     case SEMICOLON:
     case LOGICAL_NOT:
     case BITWISE_NOT:
+    case ASSIGN:
     case MINUS:
     case PLUS:
     case STAR:
@@ -162,7 +164,10 @@ char* get_next_token(FILE* file)
         char_count++;
         fgetpos(file, &prev);
         c = fgetc(file);
-        if(is_operator(c) && c != ')' && c != '}' && c != '(' && c != '{') {
+        if(ret[0] == '=' && c != '=') {
+          fsetpos(file, &prev);
+        } else if(is_operator(c) && c != ')' && c != '}' 
+                                 && c != '(' && c != '{') {
           ret[1] = c;
           char_count++;
         } else {
