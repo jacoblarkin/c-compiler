@@ -140,6 +140,9 @@ void print_lexemes(TokenList* lexemes)
     case RSHIFT:
       puts("RSHIFT");
       break;
+    case ASSIGN:
+      puts("ASSIGN");
+      break;
     default:
       break;
     }
@@ -158,6 +161,19 @@ void pretty_print(ProgramNode program)
       case RETURN_STATEMENT:
         printf("\treturn ");
         print_expression(stmt->return_value);
+        printf("\n");
+        break;
+      case DECLARATION:
+        printf("\t%s: INTEGER", stmt->var_name);
+        if(stmt->assignment_expression) {
+          printf(" = ");
+          print_expression(stmt->assignment_expression);
+        }
+        printf("\n");
+        break;
+      case EXPRESSION:
+        printf("\t");
+        print_expression(stmt->expression);
         printf("\n");
         break;
       default:
@@ -316,6 +332,14 @@ void print_expression(ExpressionNode* exp)
     printf(") RSHIFT (");
     print_expression(exp->right_operand);
     printf(")");
+    break;
+  case ASSIGN_EXP:
+    printf("%s <- (", exp->var_name);
+    print_expression(exp->assigned_exp);
+    printf(")");
+    break;
+  case VAR_EXP:
+    printf("(%s)", exp->var_name);
     break;
   default:
     break;
