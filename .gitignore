@@ -60,3 +60,7 @@ compiler
 
 # Vim files
 *.swp
+
+# Miscellaneous
+.ccls
+tags
