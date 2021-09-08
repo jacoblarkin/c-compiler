@@ -130,14 +130,32 @@ FunctionNode* construct_function()
   func->capacity = 1;
   func->body = calloc(1, sizeof(StatementNode*));
   curr = curr->next;
+  int returned = 0;
   while(curr->tok.type != RIGHT_BRACE) {
     if(func->num_statements == func->capacity) {
       func->capacity *= 2;
       func->body = realloc(func->body,
                            sizeof(StatementNode*) * func->capacity);
     }
+    if(curr->tok.type == RETURN) {
+      returned = 1;
+    }
     func->body[func->num_statements++] = construct_statement();
     curr = curr->next;
+  }
+  if(!returned) {
+    StatementNode* stmt = malloc(sizeof(StatementNode));
+    ExpressionNode* zero = malloc(sizeof(ExpressionNode));
+    stmt->type = RETURN_STATEMENT;
+    zero->type = INT_VALUE;
+    zero->int_value = 0;
+    stmt->return_value = zero;
+    if(func->num_statements == func->capacity) {
+      func->capacity++;
+      func->body = realloc(func->body,
+                           sizeof(StatementNode*) * func->capacity);
+    }
+    func->body[func->num_statements++] = stmt;
   }
   return func;
 }
