@@ -1,5 +1,6 @@
 #include "generator.h"
 #include "parser.h"
+#include "symbol.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -15,8 +16,13 @@ void write_ast_assembly(ProgramNode, FILE*);
 void write_statement_assembly(StatementNode*, FILE*);
 void write_expression_assembly(Register, ExpressionNode*, FILE*);
 void check_next_reg(Register);
+int count_local_vars(FunctionNode*);
 
 int tag_counter = 0;
+
+SymbolTable* main_st;
+
+int func_stack_offset;
 
 void generate_assembly(ProgramNode prgm, const char* filename)
 {
@@ -44,19 +50,47 @@ void write_ast_assembly(ProgramNode prgm, FILE* as_file)
 {
   if(prgm.main) {
     fputs("_main:\n", as_file);
+    main_st = malloc(sizeof(SymbolTable));
+    Symbol empty = {NULL, .offset = 0};
+    main_st->symbol = empty;
+    main_st->next = NULL;
+    func_stack_offset = 4*count_local_vars(prgm.main);
+    if(func_stack_offset % 16) {
+      func_stack_offset += func_stack_offset % 16;
+    }
+    fprintf(as_file, "  sub sp, sp, #%i\n", func_stack_offset);
     FunctionNode* main = prgm.main;
     for(unsigned int i = 0; i < main->num_statements; i++) {
       write_statement_assembly(main->body[i], as_file);
     }
+    fprintf(as_file, "  add sp, sp, #%i\n", func_stack_offset);
   }
 }
 
 void write_statement_assembly(StatementNode* stmt, FILE* as_file)
 {
+  static int next_offset = 4;
   switch(stmt->type) {
   case RETURN_STATEMENT:
     write_expression_assembly(X0, stmt->return_value, as_file); 
     fputs("  ret\n", as_file);
+    break;
+  case DECLARATION:
+    if(find_symbol(stmt->var_name, main_st).name) {
+      puts("Error: duplicate declaration of variable:");
+      puts(stmt->var_name);
+      fclose(as_file);
+      exit(1);
+    }
+    push_constructed_symbol(stmt->var_name, next_offset, main_st);
+    if(stmt->assignment_expression) {
+      write_expression_assembly(X0, stmt->assignment_expression, as_file);
+      fprintf(as_file, "  str w0, [sp, %i]\n", func_stack_offset - next_offset);
+    }
+    next_offset += 4;
+    break;
+  case EXPRESSION:
+    write_expression_assembly(X0, stmt->expression, as_file);
     break;
   default:
     break;
@@ -213,6 +247,25 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
     write_expression_assembly(reg+1, exp->right_operand, as_file);
     fprintf(as_file, "  asr w%i, w%i, w%i\n", reg, reg, reg+1);
     break;
+  case ASSIGN_EXP:
+    if(!find_symbol(exp->var_name, main_st).name) {
+      puts("Error: Symbol not found:");
+      puts(exp->var_name);
+      fclose(as_file);
+      exit(1);
+    }
+    write_expression_assembly(reg, exp->assigned_exp, as_file);
+    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg, func_stack_offset - find_symbol(exp->var_name, main_st).offset);
+    break;
+  case VAR_EXP:
+    if(!find_symbol(exp->var_name, main_st).name) {
+      puts("Error: Symbol not found:");
+      puts(exp->var_name);
+      fclose(as_file);
+      exit(1);
+    }
+    fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, func_stack_offset - find_symbol(exp->var_name, main_st).offset);
+    break;
   default:
     break;
   }
@@ -224,4 +277,15 @@ void check_next_reg(Register reg)
     puts("Error:  Can only handle up to 18 registers right now");
     exit(1);
   }
+}
+
+int count_local_vars(FunctionNode* func)
+{
+  int local_vars = 0;
+  for(unsigned int i = 0; i < func->num_statements; i++) {
+    if(func->body[i]->type == DECLARATION) {
+      local_vars++;
+    }
+  }
+  return local_vars;
 }
