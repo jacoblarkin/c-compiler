@@ -29,7 +29,17 @@ typedef enum ExpressionType_t {
   LSHIFT_BINEXP,
   RSHIFT_BINEXP,
   ASSIGN_EXP,
-  VAR_EXP
+  VAR_EXP,
+  PLUSEQ_EXP,
+  MINUSEQ_EXP,
+  TIMESEQ_EXP,
+  DIVEQ_EXP,
+  MODEQ_EXP,
+  LSHEQ_EXP,
+  RSHEQ_EXP,
+  ANDEQ_EXP,
+  OREQ_EXP,
+  XOREQ_EXP
 } ExpressionType;
 
 typedef enum VarType_t {

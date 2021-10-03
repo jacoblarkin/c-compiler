@@ -400,6 +400,16 @@ int operator_precedence(Token op)
   case OR:
     return 2;
   case ASSIGN:
+  case PLUSEQ:
+  case MINUSEQ:
+  case TIMESEQ:
+  case DIVEQ:
+  case MODEQ:
+  case LSHEQ:
+  case RSHEQ:
+  case ANDEQ:
+  case OREQ:
+  case XOREQ:
      return 1;
   case RIGHT_PAREN:
   case SEMICOLON:
@@ -474,6 +484,66 @@ ExpressionNode* construct_binary_expression(Token op, ExpressionNode* lhs,
       break;
     case ASSIGN:
       binary_exp->type = ASSIGN_EXP;
+      if(lhs->type != VAR_EXP) {
+        print_error("Invalid lvalue");
+      }
+      break;
+    case PLUSEQ:
+      binary_exp->type = PLUSEQ_EXP;
+      if(lhs->type != VAR_EXP) {
+        print_error("Invalid lvalue");
+      }
+      break;
+    case MINUSEQ:
+      binary_exp->type = MINUSEQ_EXP;
+      if(lhs->type != VAR_EXP) {
+        print_error("Invalid lvalue");
+      }
+      break;
+    case TIMESEQ:
+      binary_exp->type = TIMESEQ_EXP;
+      if(lhs->type != VAR_EXP) {
+        print_error("Invalid lvalue");
+      }
+      break;
+    case DIVEQ:
+      binary_exp->type = DIVEQ_EXP;
+      if(lhs->type != VAR_EXP) {
+        print_error("Invalid lvalue");
+      }
+      break;
+    case MODEQ:
+      binary_exp->type = MODEQ_EXP;
+      if(lhs->type != VAR_EXP) {
+        print_error("Invalid lvalue");
+      }
+      break;
+    case LSHEQ:
+      binary_exp->type = LSHEQ_EXP;
+      if(lhs->type != VAR_EXP) {
+        print_error("Invalid lvalue");
+      }
+      break;
+    case RSHEQ:
+      binary_exp->type = RSHEQ_EXP;
+      if(lhs->type != VAR_EXP) {
+        print_error("Invalid lvalue");
+      }
+      break;
+    case ANDEQ:
+      binary_exp->type = ANDEQ_EXP;
+      if(lhs->type != VAR_EXP) {
+        print_error("Invalid lvalue");
+      }
+      break;
+    case OREQ:
+      binary_exp->type = OREQ_EXP;
+      if(lhs->type != VAR_EXP) {
+        print_error("Invalid lvalue");
+      }
+      break;
+    case XOREQ:
+      binary_exp->type = XOREQ_EXP;
       if(lhs->type != VAR_EXP) {
         print_error("Invalid lvalue");
       }
