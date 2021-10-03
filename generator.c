@@ -255,6 +255,7 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
       puts("Error: Symbol not found:");
       puts(exp->var_name);
       fclose(as_file);
+      remove(assembly_filename);
       exit(1);
     }
     write_expression_assembly(reg, exp->assigned_exp, as_file);
@@ -265,6 +266,7 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
       puts("Error: Symbol not found:");
       puts(exp->var_name);
       fclose(as_file);
+      remove(assembly_filename);
       exit(1);
     }
     fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, func_stack_offset - find_symbol(exp->var_name, main_st).offset);
@@ -278,6 +280,7 @@ void check_next_reg(Register reg)
 {
   if(reg+1 > 18) {
     puts("Error:  Can only handle up to 18 registers right now");
+    remove(assembly_filename);
     exit(1);
   }
 }
