@@ -55,9 +55,7 @@ typedef struct ExpressionNode_t {
       struct ExpressionNode_t *left_operand;
       struct ExpressionNode_t *right_operand;
     };
-    struct { // For VAR
-      char* var_name;
-    };
+    char* var_name; // For VAR
   };
 } ExpressionNode;
 
