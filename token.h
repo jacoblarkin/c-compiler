@@ -1,7 +1,7 @@
 #ifndef __TOKEN_H__
 #define __TOKEN_H__
 
-typedef enum TokenType_t {
+typedef enum TokenType_e {
   UNKNOWN = 0,
   LEFT_BRACE,
   RIGHT_BRACE,
@@ -34,21 +34,31 @@ typedef enum TokenType_t {
   BIT_XOR,
   LSHIFT,
   RSHIFT,
-  ASSIGN
+  ASSIGN,
+  PLUSEQ,
+  MINUSEQ,
+  TIMESEQ,
+  DIVEQ,
+  MODEQ,
+  LSHEQ,
+  RSHEQ,
+  ANDEQ,
+  OREQ,
+  XOREQ
 } TokenType;
 
-typedef struct Token_t {
+typedef struct Token_s {
   TokenType type;
   char* value;
 } Token;
 
-typedef struct TokenListNode_t {
+typedef struct TokenListNode_s {
   Token tok;
-  struct TokenListNode_t* prev;
-  struct TokenListNode_t* next;
+  struct TokenListNode_s* prev;
+  struct TokenListNode_s* next;
 } TokenListNode;
 
-typedef struct TokenList_t {
+typedef struct TokenList_s {
   TokenListNode* first;
   TokenListNode* last;
 } TokenList;

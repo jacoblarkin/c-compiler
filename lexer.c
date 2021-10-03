@@ -51,6 +51,16 @@ struct operator_pair operators[] =
   {"^", BIT_XOR},
   {"<<", LSHIFT},
   {">>", RSHIFT},
+  {"+=", PLUSEQ},
+  {"-=", MINUSEQ},
+  {"*=", TIMESEQ},
+  {"/=", DIVEQ},
+  {"%=", MODEQ},
+  {"<<=", LSHEQ},
+  {">>=", RSHEQ},
+  {"&=", ANDEQ},
+  {"|=", OREQ},
+  {"^=", XOREQ},
   { 0 , UNKNOWN}
 };
 
@@ -119,6 +129,16 @@ void lex_impl(TokenList* list, FILE* file)
     case RSHIFT:
     case INT:
     case RETURN:
+    case PLUSEQ:
+    case MINUSEQ:
+    case TIMESEQ:
+    case DIVEQ:
+    case MODEQ:
+    case LSHEQ:
+    case RSHEQ:
+    case ANDEQ:
+    case OREQ:
+    case XOREQ:
       new_token.type = tt;
       free(tok);
       break;

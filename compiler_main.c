@@ -143,6 +143,36 @@ void print_lexemes(TokenList* lexemes)
     case ASSIGN:
       puts("ASSIGN");
       break;
+    case PLUSEQ:
+      puts("PLUSEQ");
+      break;
+    case MINUSEQ:
+      puts("MINUSEQ");
+      break;
+    case TIMESEQ:
+      puts("TIMESEQ");
+      break;
+    case DIVEQ:
+      puts("DIVEQ");
+      break;
+    case MODEQ:
+      puts("MODEQ");
+      break;
+    case LSHEQ:
+      puts("LSHEQ");
+      break;
+    case RSHEQ:
+      puts("RSHEQ");
+      break;
+    case ANDEQ:
+      puts("ANDEQ");
+      break;
+    case OREQ:
+      puts("OREQ");
+      break;
+    case XOREQ:
+      puts("XOREQ");
+      break;
     default:
       break;
     }
