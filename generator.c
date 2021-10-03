@@ -102,6 +102,7 @@ void write_statement_assembly(StatementNode* stmt, FILE* as_file)
 
 void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
 {
+  Symbol sym; // To be used later
   switch(exp->type) {
   case INT_VALUE:
     fprintf(as_file, "  mov w%i, #%i\n", reg, exp->int_value);
@@ -251,7 +252,8 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
     fprintf(as_file, "  asr w%i, w%i, w%i\n", reg, reg, reg+1);
     break;
   case ASSIGN_EXP:
-    if(!find_symbol(exp->left_operand->var_name, main_st).name) {
+    sym = find_symbol(exp->left_operand->var_name, main_st);
+    if(!sym.name) {
       puts("Error: Symbol not found:");
       puts(exp->var_name);
       fclose(as_file);
@@ -259,17 +261,170 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
       exit(1);
     }
     write_expression_assembly(reg, exp->right_operand, as_file);
-    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg, func_stack_offset - find_symbol(exp->left_operand->var_name, main_st).offset);
+    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
     break;
-  case VAR_EXP:
-    if(!find_symbol(exp->var_name, main_st).name) {
+  case PLUSEQ_EXP:
+    sym = find_symbol(exp->left_operand->var_name, main_st);
+    if(!sym.name) {
       puts("Error: Symbol not found:");
       puts(exp->var_name);
       fclose(as_file);
       remove(assembly_filename);
       exit(1);
     }
-    fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, func_stack_offset - find_symbol(exp->var_name, main_st).offset);
+    check_next_reg(reg);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
+    fprintf(as_file, "  add w%i, w%i, w%i\n", reg, reg, reg+1);
+    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
+    break;
+  case MINUSEQ_EXP:
+    sym = find_symbol(exp->left_operand->var_name, main_st);
+    if(!sym.name) {
+      puts("Error: Symbol not found:");
+      puts(exp->var_name);
+      fclose(as_file);
+      remove(assembly_filename);
+      exit(1);
+    }
+    check_next_reg(reg);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
+    fprintf(as_file, "  sub w%i, w%i, w%i\n", reg, reg, reg+1);
+    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
+    break;
+  case TIMESEQ_EXP:
+    sym = find_symbol(exp->left_operand->var_name, main_st);
+    if(!sym.name) {
+      puts("Error: Symbol not found:");
+      puts(exp->var_name);
+      fclose(as_file);
+      remove(assembly_filename);
+      exit(1);
+    }
+    check_next_reg(reg);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
+    fprintf(as_file, "  mul w%i, w%i, w%i\n", reg, reg, reg+1);
+    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
+    break;
+  case DIVEQ_EXP:
+    sym = find_symbol(exp->left_operand->var_name, main_st);
+    if(!sym.name) {
+      puts("Error: Symbol not found:");
+      puts(exp->var_name);
+      fclose(as_file);
+      remove(assembly_filename);
+      exit(1);
+    }
+    check_next_reg(reg);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
+    fprintf(as_file, "  sdiv w%i, w%i, w%i\n", reg, reg, reg+1);
+    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
+    break;
+  case MODEQ_EXP:
+    sym = find_symbol(exp->left_operand->var_name, main_st);
+    if(!sym.name) {
+      puts("Error: Symbol not found:");
+      puts(exp->var_name);
+      fclose(as_file);
+      remove(assembly_filename);
+      exit(1);
+    }
+    check_next_reg(reg);
+    check_next_reg(reg+1);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
+    fprintf(as_file, "  sdiv w%i, w%i, w%i\n", reg+2, reg, reg+1);
+    fprintf(as_file, "  msub w%i, w%i, w%i, w%i\n", reg, reg+1, reg+2, reg);
+    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
+    break;
+  case LSHEQ_EXP:
+    sym = find_symbol(exp->left_operand->var_name, main_st);
+    if(!sym.name) {
+      puts("Error: Symbol not found:");
+      puts(exp->var_name);
+      fclose(as_file);
+      remove(assembly_filename);
+      exit(1);
+    }
+    check_next_reg(reg);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
+    fprintf(as_file, "  lsl w%i, w%i, w%i\n", reg, reg, reg+1);
+    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
+    break;
+  case RSHEQ_EXP:
+    sym = find_symbol(exp->left_operand->var_name, main_st);
+    if(!sym.name) {
+      puts("Error: Symbol not found:");
+      puts(exp->var_name);
+      fclose(as_file);
+      remove(assembly_filename);
+      exit(1);
+    }
+    check_next_reg(reg);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
+    fprintf(as_file, "  asr w%i, w%i, w%i\n", reg, reg, reg+1);
+    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
+    break;
+  case ANDEQ_EXP:
+    sym = find_symbol(exp->left_operand->var_name, main_st);
+    if(!sym.name) {
+      puts("Error: Symbol not found:");
+      puts(exp->var_name);
+      fclose(as_file);
+      remove(assembly_filename);
+      exit(1);
+    }
+    check_next_reg(reg);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
+    fprintf(as_file, "  and w%i, w%i, w%i\n", reg, reg, reg+1);
+    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
+    break;
+  case OREQ_EXP:
+    sym = find_symbol(exp->left_operand->var_name, main_st);
+    if(!sym.name) {
+      puts("Error: Symbol not found:");
+      puts(exp->var_name);
+      fclose(as_file);
+      remove(assembly_filename);
+      exit(1);
+    }
+    check_next_reg(reg);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
+    fprintf(as_file, "  orr w%i, w%i, w%i\n", reg, reg, reg+1);
+    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
+    break;
+  case XOREQ_EXP:
+    sym = find_symbol(exp->left_operand->var_name, main_st);
+    if(!sym.name) {
+      puts("Error: Symbol not found:");
+      puts(exp->var_name);
+      fclose(as_file);
+      remove(assembly_filename);
+      exit(1);
+    }
+    check_next_reg(reg);
+    write_expression_assembly(reg+1, exp->right_operand, as_file);
+    fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
+    fprintf(as_file, "  eor w%i, w%i, w%i\n", reg, reg, reg+1);
+    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
+    break;
+  case VAR_EXP:
+    sym = find_symbol(exp->var_name, main_st);
+    if(!sym.name) {
+      puts("Error: Symbol not found:");
+      puts(exp->var_name);
+      fclose(as_file);
+      remove(assembly_filename);
+      exit(1);
+    }
+    fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
     break;
   default:
     break;
