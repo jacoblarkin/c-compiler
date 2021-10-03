@@ -24,10 +24,12 @@ SymbolTable* main_st;
 
 int func_stack_offset;
 
+char* assembly_filename;
+
 void generate_assembly(ProgramNode prgm, const char* filename)
 {
   int len = strlen(filename);
-  char* assembly_filename = calloc(len+1, sizeof(char));
+  assembly_filename = calloc(len+1, sizeof(char));
   strncpy(assembly_filename, filename, len);
   assembly_filename[len-1] = 's';
   
@@ -80,6 +82,7 @@ void write_statement_assembly(StatementNode* stmt, FILE* as_file)
       puts("Error: duplicate declaration of variable:");
       puts(stmt->var_name);
       fclose(as_file);
+      remove(assembly_filename);
       exit(1);
     }
     push_constructed_symbol(stmt->var_name, next_offset, main_st);
