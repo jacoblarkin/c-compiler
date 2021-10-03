@@ -61,6 +61,9 @@ struct operator_pair operators[] =
   {"&=", ANDEQ},
   {"|=", OREQ},
   {"^=", XOREQ},
+  {",", COMMA},
+  {"++", PLUSPLUS},
+  {"--", MINUSMINUS},
   { 0 , UNKNOWN}
 };
 
@@ -139,6 +142,9 @@ void lex_impl(TokenList* list, FILE* file)
     case ANDEQ:
     case OREQ:
     case XOREQ:
+    case COMMA:
+    case PLUSPLUS:
+    case MINUSMINUS:
       new_token.type = tt;
       free(tok);
       break;

@@ -44,7 +44,10 @@ typedef enum TokenType_e {
   RSHEQ,
   ANDEQ,
   OREQ,
-  XOREQ
+  XOREQ,
+  COMMA,
+  PLUSPLUS,
+  MINUSMINUS
 } TokenType;
 
 typedef struct Token_s {
