@@ -251,15 +251,15 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
     fprintf(as_file, "  asr w%i, w%i, w%i\n", reg, reg, reg+1);
     break;
   case ASSIGN_EXP:
-    if(!find_symbol(exp->var_name, main_st).name) {
+    if(!find_symbol(exp->left_operand->var_name, main_st).name) {
       puts("Error: Symbol not found:");
       puts(exp->var_name);
       fclose(as_file);
       remove(assembly_filename);
       exit(1);
     }
-    write_expression_assembly(reg, exp->assigned_exp, as_file);
-    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg, func_stack_offset - find_symbol(exp->var_name, main_st).offset);
+    write_expression_assembly(reg, exp->right_operand, as_file);
+    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg, func_stack_offset - find_symbol(exp->left_operand->var_name, main_st).offset);
     break;
   case VAR_EXP:
     if(!find_symbol(exp->var_name, main_st).name) {

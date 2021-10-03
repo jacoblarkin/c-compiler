@@ -334,8 +334,8 @@ void print_expression(ExpressionNode* exp)
     printf(")");
     break;
   case ASSIGN_EXP:
-    printf("%s <- (", exp->var_name);
-    print_expression(exp->assigned_exp);
+    printf("%s <- (", exp->left_operand->var_name);
+    print_expression(exp->right_operand);
     printf(")");
     break;
   case VAR_EXP:

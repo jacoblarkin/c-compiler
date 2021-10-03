@@ -55,9 +55,8 @@ typedef struct ExpressionNode_t {
       struct ExpressionNode_t *left_operand;
       struct ExpressionNode_t *right_operand;
     };
-    struct { // For ASSIGN & VAR, VAR ignores expression
+    struct { // For VAR
       char* var_name;
-      struct ExpressionNode_t *assigned_exp;
     };
   };
 } ExpressionNode;

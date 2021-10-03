@@ -284,25 +284,6 @@ ExpressionNode* parse_unary_operator()
   return unary_op;
 }
 
-ExpressionNode* parse_assignment()
-{
-  ExpressionNode* assignment = malloc(sizeof(ExpressionNode));
-  if(!assignment) {
-    perror("Error");
-    exit(1);
-  }
-  TokenType prev_type = curr->prev->tok.type;
-  // Eventually add COMMA, +=, -=, *=, /=, %=, &=, |=, ^=, <<=, >>=
-  if(prev_type != ASSIGN && prev_type != SEMICOLON) {
-    print_error("Invalid lvalue for assignment.");
-  }
-  assignment->type = ASSIGN_EXP;
-  assignment->var_name = curr->tok.value;
-  curr = curr->next->next;
-  assignment->assigned_exp = construct_expression();
-  return assignment;
-}
-
 ExpressionNode* parse_var()
 {
   ExpressionNode* variable = malloc(sizeof(ExpressionNode));
@@ -329,8 +310,7 @@ ExpressionNode* parse_primary_expression()
   case MINUS:
     return parse_unary_operator();
   case IDENTIFIER:
-    return (curr->next->tok.type == ASSIGN ? parse_assignment() 
-                                           : parse_var());
+    return parse_var();
   case LEFT_PAREN:
     if(!find_right_paren()) {
       print_error("Missing parenthesis");
@@ -394,31 +374,33 @@ int operator_precedence(Token op)
   case STAR:
   case SLASH:
   case MOD:
-    return 10;
+    return 11;
   case PLUS:
   case MINUS:
-    return 9;
+    return 10;
   case LSHIFT:
   case RSHIFT:
-    return 8;
+    return 9;
   case LESSTHAN:
   case LEQ:
   case GREATERTHAN:
   case GEQ:
-    return 7;
+    return 8;
   case EQUAL:
   case NOTEQUAL:
-    return 6;
+    return 7;
   case BIT_AND:
-    return 5;
+    return 6;
   case BIT_XOR:
-    return 4;
+    return 5;
   case BIT_OR:
-    return 3;
+    return 4;
   case AND:
-    return 2;
+    return 3;
   case OR:
-    return 1;
+    return 2;
+  case ASSIGN:
+     return 1;
   case RIGHT_PAREN:
   case SEMICOLON:
     return -1;
@@ -489,6 +471,12 @@ ExpressionNode* construct_binary_expression(Token op, ExpressionNode* lhs,
       break;
     case RSHIFT:
       binary_exp->type = RSHIFT_BINEXP;
+      break;
+    case ASSIGN:
+      binary_exp->type = ASSIGN_EXP;
+      if(lhs->type != VAR_EXP) {
+        print_error("Invalid lvalue");
+      }
       break;
     default:
       print_error("Unknown operator.");
