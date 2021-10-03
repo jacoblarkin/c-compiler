@@ -64,3 +64,6 @@ compiler
 # Miscellaneous
 .ccls
 tags
+.vscode/settings.json
+.gitignore
+.vscode/c_cpp_properties.json
