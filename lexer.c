@@ -184,13 +184,24 @@ char* get_next_token(FILE* file)
         char_count++;
         fgetpos(file, &prev);
         c = fgetc(file);
-        if(ret[0] == '=' && c != '=') {
+        if(ret[0] == '=' && c != '=') { // Can't have any op after = other than =
           fsetpos(file, &prev);
         } else if(is_operator(c) && c != ')' && c != '}' 
                                  && c != '(' && c != '{') {
           ret[1] = c;
           char_count++;
-        } else {
+          // Check for <<= or >>= (Only possible 3 char operators?)
+          if((ret[0]=='<' && ret[1]=='<') || (ret[0]=='>' && ret[0]=='>')) {
+            fgetpos(file, &prev);
+            c = fgetc(file);
+            if(c == '=') { // if <<= or >>=
+              ret[2] = c;
+              char_count++;
+            } else { // if not <<= or >>=
+              fsetpos(file, &prev);
+            }
+          }
+        } else { // Only a single char operator
           fsetpos(file, &prev);  
         }
         break;
