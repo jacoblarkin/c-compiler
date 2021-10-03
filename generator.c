@@ -426,6 +426,64 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
     }
     fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
     break;
+  case COMMA_EXP:
+    write_expression_assembly(reg, exp->left_operand, as_file);
+    write_expression_assembly(reg, exp->right_operand, as_file);
+    break;
+  case PREINC_EXP:
+    sym = find_symbol(exp->var_name, main_st);
+    if(!sym.name) {
+      puts("Error: Symbol not found:");
+      puts(exp->var_name);
+      fclose(as_file);
+      remove(assembly_filename);
+      exit(1);
+    }
+    fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
+    fprintf(as_file, "  add w%i, w%i, #1\n", reg, reg);
+    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
+    break;
+  case PREDEC_EXP:
+    sym = find_symbol(exp->var_name, main_st);
+    if(!sym.name) {
+      puts("Error: Symbol not found:");
+      puts(exp->var_name);
+      fclose(as_file);
+      remove(assembly_filename);
+      exit(1);
+    }
+    fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
+    fprintf(as_file, "  sub w%i, w%i, #1\n", reg, reg);
+    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
+    break;
+  case POSTINC_EXP:
+    sym = find_symbol(exp->var_name, main_st);
+    if(!sym.name) {
+      puts("Error: Symbol not found:");
+      puts(exp->var_name);
+      fclose(as_file);
+      remove(assembly_filename);
+      exit(1);
+    }
+    check_next_reg(reg);
+    fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
+    fprintf(as_file, "  add w%i, w%i, #1\n", reg+1, reg);
+    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg+1, func_stack_offset - sym.offset);
+    break;
+  case POSTDEC_EXP:
+    sym = find_symbol(exp->var_name, main_st);
+    if(!sym.name) {
+      puts("Error: Symbol not found:");
+      puts(exp->var_name);
+      fclose(as_file);
+      remove(assembly_filename);
+      exit(1);
+    }
+    check_next_reg(reg);
+    fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
+    fprintf(as_file, "  sub w%i, w%i, #1\n", reg+1, reg);
+    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg+1, func_stack_offset - sym.offset);
+    break;
   default:
     break;
   }
