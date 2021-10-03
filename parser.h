@@ -39,7 +39,12 @@ typedef enum ExpressionType_t {
   RSHEQ_EXP,
   ANDEQ_EXP,
   OREQ_EXP,
-  XOREQ_EXP
+  XOREQ_EXP,
+  COMMA_EXP,
+  PREINC_EXP,
+  POSTINC_EXP,
+  PREDEC_EXP,
+  POSTDEC_EXP
 } ExpressionType;
 
 typedef enum VarType_t {

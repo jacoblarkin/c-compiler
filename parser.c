@@ -278,6 +278,22 @@ ExpressionNode* parse_unary_operator()
     curr = curr->next;
     unary_op->unary_operand = parse_primary_expression();
     break;
+  case PLUSPLUS:
+    unary_op->type = PREINC_EXP;
+    curr = curr->next;
+    unary_op->unary_operand = parse_primary_expression();
+    if(unary_op->unary_operand->type != VAR_EXP) {
+      print_error("Pre Inc must act on variable");
+    }
+    break;
+  case MINUSMINUS:
+    unary_op->type = PREDEC_EXP;
+    curr = curr->next;
+    unary_op->unary_operand = parse_primary_expression();
+    if(unary_op->unary_operand->type != VAR_EXP) {
+      print_error("Pre Dec must act on variable");
+    }
+    break;
   default:
     print_error("This is not a unary operator.");
   }
@@ -294,6 +310,19 @@ ExpressionNode* parse_var()
   variable->type = VAR_EXP;
   variable->var_name = curr->tok.value;
   curr = curr->next;
+  if(curr->tok.type == PLUSPLUS) {
+    ExpressionNode* pp = malloc(sizeof(ExpressionNode));
+    pp->type = POSTINC_EXP;
+    pp->unary_operand = variable;
+    curr = curr->next;
+    return pp;
+  } else if(curr->tok.type == MINUSMINUS) {
+    ExpressionNode* mm = malloc(sizeof(ExpressionNode));
+    mm->type = POSTINC_EXP;
+    mm->unary_operand = variable;
+    curr = curr->next;
+    return mm;
+  }
   return variable;
 }
 
@@ -308,6 +337,8 @@ ExpressionNode* parse_primary_expression()
   case LOGICAL_NOT:
   case BITWISE_NOT:
   case MINUS:
+  case PLUSPLUS:
+  case MINUSMINUS:
     return parse_unary_operator();
   case IDENTIFIER:
     return parse_var();
@@ -371,34 +402,37 @@ ExpressionNode* parse_operators_impl(ExpressionNode* lhs, int min_precedence)
 int operator_precedence(Token op)
 {
   switch(op.type) {
+  case PLUSPLUS:
+  case MINUSMINUS:
+    return 13;
   case STAR:
   case SLASH:
   case MOD:
-    return 11;
+    return 12;
   case PLUS:
   case MINUS:
-    return 10;
+    return 11;
   case LSHIFT:
   case RSHIFT:
-    return 9;
+    return 10;
   case LESSTHAN:
   case LEQ:
   case GREATERTHAN:
   case GEQ:
-    return 8;
+    return 9;
   case EQUAL:
   case NOTEQUAL:
-    return 7;
+    return 8;
   case BIT_AND:
-    return 6;
+    return 7;
   case BIT_XOR:
-    return 5;
+    return 6;
   case BIT_OR:
-    return 4;
+    return 5;
   case AND:
-    return 3;
+    return 4;
   case OR:
-    return 2;
+    return 3;
   case ASSIGN:
   case PLUSEQ:
   case MINUSEQ:
@@ -410,7 +444,9 @@ int operator_precedence(Token op)
   case ANDEQ:
   case OREQ:
   case XOREQ:
-     return 1;
+    return 2;
+  case COMMA:
+    return 1;
   case RIGHT_PAREN:
   case SEMICOLON:
     return -1;
@@ -547,6 +583,9 @@ ExpressionNode* construct_binary_expression(Token op, ExpressionNode* lhs,
       if(lhs->type != VAR_EXP) {
         print_error("Invalid lvalue");
       }
+      break;
+    case COMMA:
+      binary_exp->type = COMMA_EXP;
       break;
     default:
       print_error("Unknown operator.");
