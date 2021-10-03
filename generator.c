@@ -51,12 +51,12 @@ void write_ast_assembly(ProgramNode prgm, FILE* as_file)
   if(prgm.main) {
     fputs("_main:\n", as_file);
     main_st = malloc(sizeof(SymbolTable));
-    Symbol empty = {NULL, .offset = 0};
-    main_st->symbol = empty;
-    main_st->next = NULL;
+    main_st->top = NULL;
+    // Why am I doing this?
+    push_constructed_symbol(NULL, 0, main_st);
     func_stack_offset = 4*count_local_vars(prgm.main);
     if(func_stack_offset % 16) {
-      func_stack_offset += func_stack_offset % 16;
+      func_stack_offset += (16 - func_stack_offset % 16);
     }
     fprintf(as_file, "  sub sp, sp, #%i\n", func_stack_offset);
     FunctionNode* main = prgm.main;
@@ -85,7 +85,7 @@ void write_statement_assembly(StatementNode* stmt, FILE* as_file)
     push_constructed_symbol(stmt->var_name, next_offset, main_st);
     if(stmt->assignment_expression) {
       write_expression_assembly(X0, stmt->assignment_expression, as_file);
-      fprintf(as_file, "  str w0, [sp, %i]\n", func_stack_offset - next_offset);
+      //fprintf(as_file, "  str w0, [sp, %i]\n", func_stack_offset - next_offset);
     }
     next_offset += 4;
     break;

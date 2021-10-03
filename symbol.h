@@ -8,9 +8,13 @@ typedef struct Symbol_s {
   };
 } Symbol;
 
-typedef struct SymbolTable_s {
+typedef struct SymbolTableNode_s {
   Symbol symbol;
-  struct SymbolTable_s* next;
+  struct SymbolTableNode_s* next;
+} SymbolTableNode;
+
+typedef struct SymbolTable_s {
+  SymbolTableNode* top;
 } SymbolTable;
 
 extern SymbolTable global_symbol_table;
