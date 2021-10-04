@@ -27,11 +27,34 @@ typedef enum ExpressionType_t {
   BITOR_BINEXP,
   BITXOR_BINEXP,
   LSHIFT_BINEXP,
-  RSHIFT_BINEXP
+  RSHIFT_BINEXP,
+  ASSIGN_EXP,
+  VAR_EXP,
+  PLUSEQ_EXP,
+  MINUSEQ_EXP,
+  TIMESEQ_EXP,
+  DIVEQ_EXP,
+  MODEQ_EXP,
+  LSHEQ_EXP,
+  RSHEQ_EXP,
+  ANDEQ_EXP,
+  OREQ_EXP,
+  XOREQ_EXP,
+  COMMA_EXP,
+  PREINC_EXP,
+  POSTINC_EXP,
+  PREDEC_EXP,
+  POSTDEC_EXP
 } ExpressionType;
 
+typedef enum VarType_t {
+  INT_VAR
+} VarType;
+
 typedef enum StatementType_t {
-  RETURN_STATEMENT
+  RETURN_STATEMENT,
+  DECLARATION,
+  EXPRESSION
 } StatementType;
 
 typedef enum ReturnType_t {
@@ -47,6 +70,7 @@ typedef struct ExpressionNode_t {
       struct ExpressionNode_t *left_operand;
       struct ExpressionNode_t *right_operand;
     };
+    char* var_name; // For VAR
   };
 } ExpressionNode;
 
@@ -54,6 +78,12 @@ typedef struct StatementNode_t {
   StatementType type;
   union {
     ExpressionNode* return_value;
+    struct {  // Declare var
+      VarType var_type;
+      char* var_name;
+      ExpressionNode* assignment_expression;
+    };
+    ExpressionNode* expression;
   };
 } StatementNode;
 

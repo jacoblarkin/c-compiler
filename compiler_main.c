@@ -140,6 +140,39 @@ void print_lexemes(TokenList* lexemes)
     case RSHIFT:
       puts("RSHIFT");
       break;
+    case ASSIGN:
+      puts("ASSIGN");
+      break;
+    case PLUSEQ:
+      puts("PLUSEQ");
+      break;
+    case MINUSEQ:
+      puts("MINUSEQ");
+      break;
+    case TIMESEQ:
+      puts("TIMESEQ");
+      break;
+    case DIVEQ:
+      puts("DIVEQ");
+      break;
+    case MODEQ:
+      puts("MODEQ");
+      break;
+    case LSHEQ:
+      puts("LSHEQ");
+      break;
+    case RSHEQ:
+      puts("RSHEQ");
+      break;
+    case ANDEQ:
+      puts("ANDEQ");
+      break;
+    case OREQ:
+      puts("OREQ");
+      break;
+    case XOREQ:
+      puts("XOREQ");
+      break;
     default:
       break;
     }
@@ -158,6 +191,19 @@ void pretty_print(ProgramNode program)
       case RETURN_STATEMENT:
         printf("\treturn ");
         print_expression(stmt->return_value);
+        printf("\n");
+        break;
+      case DECLARATION:
+        printf("\t%s: INTEGER", stmt->var_name);
+        if(stmt->assignment_expression) {
+          printf(" = ");
+          print_expression(stmt->assignment_expression);
+        }
+        printf("\n");
+        break;
+      case EXPRESSION:
+        printf("\t");
+        print_expression(stmt->expression);
         printf("\n");
         break;
       default:
@@ -316,6 +362,64 @@ void print_expression(ExpressionNode* exp)
     printf(") RSHIFT (");
     print_expression(exp->right_operand);
     printf(")");
+    break;
+  case ASSIGN_EXP:
+    printf("%s <- (", exp->left_operand->var_name);
+    print_expression(exp->right_operand);
+    printf(")");
+    break;
+  case PLUSEQ_EXP:
+    printf("%s <- ( %s + (", exp->left_operand->var_name, exp->left_operand->var_name);
+    print_expression(exp->right_operand);
+    printf("))");
+    break;
+  case MINUSEQ_EXP:
+    printf("%s <- ( %s - (", exp->left_operand->var_name, exp->left_operand->var_name);
+    print_expression(exp->right_operand);
+    printf("))");
+    break;
+  case TIMESEQ_EXP:
+    printf("%s <- ( %s * (", exp->left_operand->var_name, exp->left_operand->var_name);
+    print_expression(exp->right_operand);
+    printf("))");
+    break;
+  case DIVEQ_EXP:
+    printf("%s <- ( %s / (", exp->left_operand->var_name, exp->left_operand->var_name);
+    print_expression(exp->right_operand);
+    printf("))");
+    break;
+  case MODEQ_EXP:
+    printf("%s <- ( %s MOD (", exp->left_operand->var_name, exp->left_operand->var_name);
+    print_expression(exp->right_operand);
+    printf("))");
+    break;
+  case LSHEQ_EXP:
+    printf("%s <- ( %s << (", exp->left_operand->var_name, exp->left_operand->var_name);
+    print_expression(exp->right_operand);
+    printf("))");
+    break;
+  case RSHEQ_EXP:
+    printf("%s <- ( %s >> (", exp->left_operand->var_name, exp->left_operand->var_name);
+    print_expression(exp->right_operand);
+    printf("))");
+    break;
+  case ANDEQ_EXP:
+    printf("%s <- ( %s & (", exp->left_operand->var_name, exp->left_operand->var_name);
+    print_expression(exp->right_operand);
+    printf("))");
+    break;
+  case OREQ_EXP:
+    printf("%s <- ( %s | (", exp->left_operand->var_name, exp->left_operand->var_name);
+    print_expression(exp->right_operand);
+    printf("))");
+    break;
+  case XOREQ_EXP:
+    printf("%s <- ( %s ^ (", exp->left_operand->var_name, exp->left_operand->var_name);
+    print_expression(exp->right_operand);
+    printf("))");
+    break;
+  case VAR_EXP:
+    printf("(%s)", exp->var_name);
     break;
   default:
     break;

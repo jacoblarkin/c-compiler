@@ -30,6 +30,7 @@ struct operator_pair operators[] =
   {"(", LEFT_PAREN},
   {")", RIGHT_PAREN},
   {";", SEMICOLON},
+  {"=", ASSIGN},
   {"!", LOGICAL_NOT},
   {"~", BITWISE_NOT},
   {"-", MINUS},
@@ -50,6 +51,19 @@ struct operator_pair operators[] =
   {"^", BIT_XOR},
   {"<<", LSHIFT},
   {">>", RSHIFT},
+  {"+=", PLUSEQ},
+  {"-=", MINUSEQ},
+  {"*=", TIMESEQ},
+  {"/=", DIVEQ},
+  {"%=", MODEQ},
+  {"<<=", LSHEQ},
+  {">>=", RSHEQ},
+  {"&=", ANDEQ},
+  {"|=", OREQ},
+  {"^=", XOREQ},
+  {",", COMMA},
+  {"++", PLUSPLUS},
+  {"--", MINUSMINUS},
   { 0 , UNKNOWN}
 };
 
@@ -97,6 +111,7 @@ void lex_impl(TokenList* list, FILE* file)
     case SEMICOLON:
     case LOGICAL_NOT:
     case BITWISE_NOT:
+    case ASSIGN:
     case MINUS:
     case PLUS:
     case STAR:
@@ -117,6 +132,19 @@ void lex_impl(TokenList* list, FILE* file)
     case RSHIFT:
     case INT:
     case RETURN:
+    case PLUSEQ:
+    case MINUSEQ:
+    case TIMESEQ:
+    case DIVEQ:
+    case MODEQ:
+    case LSHEQ:
+    case RSHEQ:
+    case ANDEQ:
+    case OREQ:
+    case XOREQ:
+    case COMMA:
+    case PLUSPLUS:
+    case MINUSMINUS:
       new_token.type = tt;
       free(tok);
       break;
@@ -162,10 +190,24 @@ char* get_next_token(FILE* file)
         char_count++;
         fgetpos(file, &prev);
         c = fgetc(file);
-        if(is_operator(c) && c != ')' && c != '}' && c != '(' && c != '{') {
+        if(ret[0] == '=' && c != '=') { // Can't have any op after = other than =
+          fsetpos(file, &prev);
+        } else if(is_operator(c) && c != ')' && c != '}' 
+                                 && c != '(' && c != '{') {
           ret[1] = c;
           char_count++;
-        } else {
+          // Check for <<= or >>= (Only possible 3 char operators?)
+          if((ret[0]=='<' && ret[1]=='<') || (ret[0]=='>' && ret[0]=='>')) {
+            fgetpos(file, &prev);
+            c = fgetc(file);
+            if(c == '=') { // if <<= or >>=
+              ret[2] = c;
+              char_count++;
+            } else { // if not <<= or >>=
+              fsetpos(file, &prev);
+            }
+          }
+        } else { // Only a single char operator
           fsetpos(file, &prev);  
         }
         break;

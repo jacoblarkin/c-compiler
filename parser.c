@@ -22,6 +22,8 @@ ExpressionNode* construct_binary_expression(Token, ExpressionNode*, ExpressionNo
 ExpressionNode* parse_number(Token);
 ExpressionNode* parse_unary_operator(void);
 int find_right_paren(void);
+ExpressionNode* parse_assignment(void);
+ExpressionNode* parse_var(void);
 
 // Current Node in token list
 TokenListNode* curr;
@@ -128,14 +130,32 @@ FunctionNode* construct_function()
   func->capacity = 1;
   func->body = calloc(1, sizeof(StatementNode*));
   curr = curr->next;
+  int returned = 0;
   while(curr->tok.type != RIGHT_BRACE) {
     if(func->num_statements == func->capacity) {
       func->capacity *= 2;
       func->body = realloc(func->body,
                            sizeof(StatementNode*) * func->capacity);
     }
+    if(curr->tok.type == RETURN) {
+      returned = 1;
+    }
     func->body[func->num_statements++] = construct_statement();
     curr = curr->next;
+  }
+  if(!returned) {
+    StatementNode* stmt = malloc(sizeof(StatementNode));
+    ExpressionNode* zero = malloc(sizeof(ExpressionNode));
+    stmt->type = RETURN_STATEMENT;
+    zero->type = INT_VALUE;
+    zero->int_value = 0;
+    stmt->return_value = zero;
+    if(func->num_statements == func->capacity) {
+      func->capacity++;
+      func->body = realloc(func->body,
+                           sizeof(StatementNode*) * func->capacity);
+    }
+    func->body[func->num_statements++] = stmt;
   }
   return func;
 }
@@ -153,8 +173,24 @@ StatementNode* construct_statement()
     curr = curr->next;
     stmt->return_value = construct_expression();
     break;
+  case INT:
+    stmt->type = DECLARATION;
+    stmt->var_type = INT_VAR;
+    curr = curr->next;
+    if(curr->tok.type != IDENTIFIER) {
+      print_error("Expected identifier to declar var.");
+    }
+    stmt->var_name = curr->tok.value;
+    stmt->assignment_expression = NULL;
+    if(curr->next->tok.type == ASSIGN) {
+      stmt->assignment_expression = construct_expression();
+    } else {
+      curr = curr->next;
+    }
+    break;
   default:
-    print_error("Can only handle return statements right now.");
+    stmt->type = EXPRESSION;
+    stmt->expression = construct_expression();
     break;
   }
   if (curr->tok.type != SEMICOLON) {
@@ -181,6 +217,7 @@ ExpressionNode* construct_expression()
   case BITWISE_NOT:
   case MINUS:
   case LEFT_PAREN:
+  case IDENTIFIER:
     exp = parse_operators();
     break;
   default:
@@ -241,10 +278,52 @@ ExpressionNode* parse_unary_operator()
     curr = curr->next;
     unary_op->unary_operand = parse_primary_expression();
     break;
+  case PLUSPLUS:
+    unary_op->type = PREINC_EXP;
+    curr = curr->next;
+    unary_op->unary_operand = parse_primary_expression();
+    if(unary_op->unary_operand->type != VAR_EXP) {
+      print_error("Pre Inc must act on variable");
+    }
+    break;
+  case MINUSMINUS:
+    unary_op->type = PREDEC_EXP;
+    curr = curr->next;
+    unary_op->unary_operand = parse_primary_expression();
+    if(unary_op->unary_operand->type != VAR_EXP) {
+      print_error("Pre Dec must act on variable");
+    }
+    break;
   default:
     print_error("This is not a unary operator.");
   }
   return unary_op;
+}
+
+ExpressionNode* parse_var()
+{
+  ExpressionNode* variable = malloc(sizeof(ExpressionNode));
+  if(!variable) {
+    perror("Error");
+    exit(1);
+  }
+  variable->type = VAR_EXP;
+  variable->var_name = curr->tok.value;
+  curr = curr->next;
+  if(curr->tok.type == PLUSPLUS) {
+    ExpressionNode* pp = malloc(sizeof(ExpressionNode));
+    pp->type = POSTINC_EXP;
+    pp->unary_operand = variable;
+    curr = curr->next;
+    return pp;
+  } else if(curr->tok.type == MINUSMINUS) {
+    ExpressionNode* mm = malloc(sizeof(ExpressionNode));
+    mm->type = POSTINC_EXP;
+    mm->unary_operand = variable;
+    curr = curr->next;
+    return mm;
+  }
+  return variable;
 }
 
 ExpressionNode* parse_primary_expression()
@@ -258,7 +337,11 @@ ExpressionNode* parse_primary_expression()
   case LOGICAL_NOT:
   case BITWISE_NOT:
   case MINUS:
+  case PLUSPLUS:
+  case MINUSMINUS:
     return parse_unary_operator();
+  case IDENTIFIER:
+    return parse_var();
   case LEFT_PAREN:
     if(!find_right_paren()) {
       print_error("Missing parenthesis");
@@ -319,33 +402,50 @@ ExpressionNode* parse_operators_impl(ExpressionNode* lhs, int min_precedence)
 int operator_precedence(Token op)
 {
   switch(op.type) {
+  case PLUSPLUS:
+  case MINUSMINUS:
+    return 13;
   case STAR:
   case SLASH:
   case MOD:
-    return 10;
+    return 12;
   case PLUS:
   case MINUS:
-    return 9;
+    return 11;
   case LSHIFT:
   case RSHIFT:
-    return 8;
+    return 10;
   case LESSTHAN:
   case LEQ:
   case GREATERTHAN:
   case GEQ:
-    return 7;
+    return 9;
   case EQUAL:
   case NOTEQUAL:
-    return 6;
+    return 8;
   case BIT_AND:
-    return 5;
+    return 7;
   case BIT_XOR:
-    return 4;
+    return 6;
   case BIT_OR:
-    return 3;
+    return 5;
   case AND:
-    return 2;
+    return 4;
   case OR:
+    return 3;
+  case ASSIGN:
+  case PLUSEQ:
+  case MINUSEQ:
+  case TIMESEQ:
+  case DIVEQ:
+  case MODEQ:
+  case LSHEQ:
+  case RSHEQ:
+  case ANDEQ:
+  case OREQ:
+  case XOREQ:
+    return 2;
+  case COMMA:
     return 1;
   case RIGHT_PAREN:
   case SEMICOLON:
@@ -417,6 +517,75 @@ ExpressionNode* construct_binary_expression(Token op, ExpressionNode* lhs,
       break;
     case RSHIFT:
       binary_exp->type = RSHIFT_BINEXP;
+      break;
+    case ASSIGN:
+      binary_exp->type = ASSIGN_EXP;
+      if(lhs->type != VAR_EXP) {
+        print_error("Invalid lvalue");
+      }
+      break;
+    case PLUSEQ:
+      binary_exp->type = PLUSEQ_EXP;
+      if(lhs->type != VAR_EXP) {
+        print_error("Invalid lvalue");
+      }
+      break;
+    case MINUSEQ:
+      binary_exp->type = MINUSEQ_EXP;
+      if(lhs->type != VAR_EXP) {
+        print_error("Invalid lvalue");
+      }
+      break;
+    case TIMESEQ:
+      binary_exp->type = TIMESEQ_EXP;
+      if(lhs->type != VAR_EXP) {
+        print_error("Invalid lvalue");
+      }
+      break;
+    case DIVEQ:
+      binary_exp->type = DIVEQ_EXP;
+      if(lhs->type != VAR_EXP) {
+        print_error("Invalid lvalue");
+      }
+      break;
+    case MODEQ:
+      binary_exp->type = MODEQ_EXP;
+      if(lhs->type != VAR_EXP) {
+        print_error("Invalid lvalue");
+      }
+      break;
+    case LSHEQ:
+      binary_exp->type = LSHEQ_EXP;
+      if(lhs->type != VAR_EXP) {
+        print_error("Invalid lvalue");
+      }
+      break;
+    case RSHEQ:
+      binary_exp->type = RSHEQ_EXP;
+      if(lhs->type != VAR_EXP) {
+        print_error("Invalid lvalue");
+      }
+      break;
+    case ANDEQ:
+      binary_exp->type = ANDEQ_EXP;
+      if(lhs->type != VAR_EXP) {
+        print_error("Invalid lvalue");
+      }
+      break;
+    case OREQ:
+      binary_exp->type = OREQ_EXP;
+      if(lhs->type != VAR_EXP) {
+        print_error("Invalid lvalue");
+      }
+      break;
+    case XOREQ:
+      binary_exp->type = XOREQ_EXP;
+      if(lhs->type != VAR_EXP) {
+        print_error("Invalid lvalue");
+      }
+      break;
+    case COMMA:
+      binary_exp->type = COMMA_EXP;
       break;
     default:
       print_error("Unknown operator.");
