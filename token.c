@@ -28,6 +28,15 @@ Token token_list_pop_front(TokenList* list)
   return tok;
 }
 
+Token token_list_peek_front(TokenList* list)
+{
+  Token tok = {UNKNOWN, NULL};
+  if(list && list->first) {
+    tok = list->first->tok;
+  }
+  return tok;
+}
+
 int token_list_push(TokenList* list, Token tok)
 {
   if(!list) {

@@ -105,6 +105,7 @@ typedef struct TokenList_s {
 
 Token token_list_pop_back(TokenList*);
 Token token_list_pop_front(TokenList*);
+Token token_list_peek_front(TokenList*);
 int token_list_push(TokenList*, Token);
 
 #endif
