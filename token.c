@@ -37,6 +37,19 @@ Token token_list_peek_front(TokenList* list)
   return tok;
 }
 
+Token token_list_peek_n(TokenList* list, size_t n)
+{
+  Token tok = {UNKNOWN, NULL};
+  if(list && list->first) {
+    TokenListNode *node = list->first;
+    for(size_t i = 0; i < n; i++) {
+      node = node->next;
+    }
+    tok = node->tok;
+  }
+  return tok;
+}
+
 int token_list_push(TokenList* list, Token tok)
 {
   if(!list) {

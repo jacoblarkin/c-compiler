@@ -1,6 +1,8 @@
 #ifndef __TOKEN_H__
 #define __TOKEN_H__
 
+#include <stddef.h>
+
 typedef enum TokenType_e {
   UNKNOWN = 0,
   LEFT_BRACE,
@@ -106,6 +108,7 @@ typedef struct TokenList_s {
 Token token_list_pop_back(TokenList*);
 Token token_list_pop_front(TokenList*);
 Token token_list_peek_front(TokenList*);
+Token token_list_peek_n(TokenList*, size_t);
 int token_list_push(TokenList*, Token);
 
 #endif
