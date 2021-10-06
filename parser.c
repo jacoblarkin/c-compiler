@@ -24,6 +24,7 @@ ExpressionNode* parse_unary_operator(Token);
 int find_right_paren(void);
 ExpressionNode* parse_assignment(void);
 ExpressionNode* parse_var(Token);
+int right_to_left_operator(Token);
 
 // Current Node in token list
 TokenListNode* curr;
@@ -371,13 +372,36 @@ ExpressionNode* parse_operators_impl(ExpressionNode* lhs, int min_precedence)
     Token op = token_list_pop_front(tokens);
     ExpressionNode* rhs = parse_primary_expression();
     lookahead = token_list_peek_front(tokens);
-    while(operator_precedence(lookahead) > operator_precedence(op)) {
+    while(operator_precedence(lookahead) > operator_precedence(op)
+          || (right_to_left_operator(lookahead) 
+              && operator_precedence(lookahead) >= operator_precedence(op))) {
       rhs = parse_operators_impl(rhs, min_precedence + 1);
       lookahead = token_list_peek_front(tokens);
     }
     lhs = construct_binary_expression(op, lhs, rhs);
   }
   return lhs;
+}
+
+int right_to_left_operator(Token op)
+{
+  switch(op.type){
+  case ASSIGN:
+  case PLUSEQ:
+  case MINUSEQ:
+  case TIMESEQ:
+  case DIVEQ:
+  case MODEQ:
+  case ANDEQ:
+  case OREQ:
+  case XOREQ:
+  case RSHEQ:
+  case LSHEQ:
+    return 1;
+  default:
+    return 0;
+  }
+  return 0;
 }
 
 int operator_precedence(Token op)
