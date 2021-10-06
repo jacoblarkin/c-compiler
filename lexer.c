@@ -6,29 +6,57 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct keyword_pair {
+struct keyop_pair {
   const char* key;
   TokenType type;
 };
 
-struct operator_pair {
-  const char* key;
-  TokenType type;
-};
-
-struct keyword_pair keywords[] = 
+struct keyop_pair keywords[] = 
 {
-  {"return", RETURN},
-  {"int", INT},
-  {NULL, UNKNOWN}
+  {"break",    BREAK_TOK},
+  {"case",     CASE_TOK},
+  {"char",     CHAR_TOK},
+  {"const",    CONST_TOK},
+  {"continue", CONTINUE_TOK},
+  {"default",  DEFAULT_TOK},
+  {"do",       DO_TOK},
+  {"double",   DOUBLE_TOK},
+  {"else",     ELSE_TOK},
+  {"enum",     ENUM_TOK},
+  {"extern",   EXTERN_TOK},
+  {"float",    FLOAT_TOK},
+  {"for",      FOR_TOK},
+  {"goto",     GOTO_TOK},
+  {"if",       IF_TOK},
+  {"inline",   INLINE_TOK},
+  {"int",      INT_TOK},
+  {"long",     LONG_TOK},
+  {"register", REGISTER_TOK},
+  {"restrict", RESTRICT_TOK},
+  {"return",   RETURN_TOK},
+  {"short",    SHORT_TOK},
+  {"signed",   SIGNED_TOK},
+  {"sizeof",   SIZEOF_TOK},
+  {"static",   STATIC_TOK},
+  {"struct",   STRUCT_TOK},
+  {"switch",   SWITCH_TOK},
+  {"typedef",  TYPEDEF_TOK},
+  {"union",    UNION_TOK},
+  {"unisnged", UNSIGNED_TOK},
+  {"void",     VOID_TOK},
+  {"volatile", VOLATILE_TOK},
+  {"while",    WHILE_TOK},
+  {NULL,       UNKNOWN}
 };
 
-struct operator_pair operators[] = 
+struct keyop_pair operators[] = 
 {
   {"{", LEFT_BRACE},
   {"}", RIGHT_BRACE},
   {"(", LEFT_PAREN},
   {")", RIGHT_PAREN},
+  {"[", LEFT_SQUARE},
+  {"]", RIGHT_SQUARE},
   {";", SEMICOLON},
   {"=", ASSIGN},
   {"!", LOGICAL_NOT},
@@ -64,6 +92,10 @@ struct operator_pair operators[] =
   {",", COMMA},
   {"++", PLUSPLUS},
   {"--", MINUSMINUS},
+  {"?", QMARK},
+  {":", COLON},
+  {".", DOT},
+  {"->", ARROW},
   { 0 , UNKNOWN}
 };
 
@@ -73,6 +105,7 @@ void lex_impl(TokenList*, FILE*);
 char* get_next_token(FILE*);
 TokenType get_token_type(const char*);
 int is_operator(char);
+int is_keyop_token(TokenType);
 
 TokenList* lex(const char* filename)
 {
@@ -103,61 +136,22 @@ void lex_impl(TokenList* list, FILE* file)
     new_token.value = NULL;
 
     TokenType tt = get_token_type(tok);
-    switch(tt) {
-    case LEFT_BRACE:
-    case RIGHT_BRACE:
-    case LEFT_PAREN:
-    case RIGHT_PAREN:
-    case SEMICOLON:
-    case LOGICAL_NOT:
-    case BITWISE_NOT:
-    case ASSIGN:
-    case MINUS:
-    case PLUS:
-    case STAR:
-    case SLASH:
-    case EQUAL:
-    case NOTEQUAL:
-    case AND:
-    case OR:
-    case LESSTHAN:
-    case LEQ:
-    case GREATERTHAN:
-    case GEQ:
-    case MOD:
-    case BIT_AND:
-    case BIT_OR:
-    case BIT_XOR:
-    case LSHIFT:
-    case RSHIFT:
-    case INT:
-    case RETURN:
-    case PLUSEQ:
-    case MINUSEQ:
-    case TIMESEQ:
-    case DIVEQ:
-    case MODEQ:
-    case LSHEQ:
-    case RSHEQ:
-    case ANDEQ:
-    case OREQ:
-    case XOREQ:
-    case COMMA:
-    case PLUSPLUS:
-    case MINUSMINUS:
+    if(is_keyop_token(tt)) {
       new_token.type = tt;
       free(tok);
-      break;
-    case IDENTIFIER:
-    case INT_LITERAL:
-    case HEX_LITERAL:
-    case OCT_LITERAL:
-      new_token.type = tt;
-      new_token.value = tok;
-      break;
-    default:
-      free(tok);
-      break;
+    } else {
+      switch(tt){
+      case IDENTIFIER:
+      case INT_LITERAL:
+      case HEX_LITERAL:
+      case OCT_LITERAL:
+        new_token.type = tt;
+        new_token.value = tok;
+        break;
+      default:
+        free(tok);
+        break;
+      }
     }
 
     token_list_push(list, new_token);
@@ -249,6 +243,21 @@ TokenType get_token_type(const char* tok)
     }
   }
   return IDENTIFIER;
+}
+
+int is_keyop_token(TokenType tt)
+{
+  for(int i = 0; keywords[i].key; i++) {
+    if(tt == keywords[i].type) {
+      return 1;
+    }
+  }
+  for(int i = 0; operators[i].key; i++) {
+    if(tt == operators[i].type) {
+      return 1;
+    }
+  }
+  return 0;
 }
 
 int is_operator(char c)

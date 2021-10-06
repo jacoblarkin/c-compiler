@@ -61,10 +61,10 @@ void print_lexemes(TokenList* lexemes)
     case SEMICOLON:
       puts("SEMICOLON");
       break;
-    case INT:
+    case INT_TOK:
       puts("INT");
       break;
-    case RETURN:
+    case RETURN_TOK:
       puts("RETURN");
       break;
     case IDENTIFIER:

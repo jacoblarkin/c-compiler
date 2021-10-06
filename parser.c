@@ -55,7 +55,7 @@ ProgramNode parse(TokenList* tokens)
       break;
     case SEMICOLON:
       break;
-    case INT:
+    case INT_TOK:
       if(curr->next->next->tok.type != LEFT_PAREN) {
         print_error("Cannot handle global vars.");
       }
@@ -99,7 +99,7 @@ FunctionNode* construct_function()
   }
   func->name = curr->next->tok.value;
   switch(curr->tok.type) {
-  case INT:
+  case INT_TOK:
     func->type = INT_RET;
     break;
   default:
@@ -137,7 +137,7 @@ FunctionNode* construct_function()
       func->body = realloc(func->body,
                            sizeof(StatementNode*) * func->capacity);
     }
-    if(curr->tok.type == RETURN) {
+    if(curr->tok.type == RETURN_TOK) {
       returned = 1;
     }
     func->body[func->num_statements++] = construct_statement();
@@ -168,12 +168,12 @@ StatementNode* construct_statement()
     exit(1);
   }
   switch(curr->tok.type) {
-  case RETURN:
+  case RETURN_TOK:
     stmt->type = RETURN_STATEMENT;
     curr = curr->next;
     stmt->return_value = construct_expression();
     break;
-  case INT:
+  case INT_TOK:
     stmt->type = DECLARATION;
     stmt->var_type = INT_VAR;
     curr = curr->next;
