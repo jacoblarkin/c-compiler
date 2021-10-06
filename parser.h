@@ -49,7 +49,10 @@ typedef enum ExpressionType_t {
 } ExpressionType;
 
 typedef enum VarType_e {
-  INT_VAR
+  INT_VAR,
+  FLOAT_VAR,
+  DOUBLE_VAR,
+  CHAR_VAR
 } VarType;
 
 typedef enum StatementType_e {
