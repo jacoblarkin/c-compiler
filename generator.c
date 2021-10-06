@@ -103,6 +103,8 @@ void write_statement_assembly(StatementNode* stmt, FILE* as_file)
 void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
 {
   Symbol sym; // To be used later
+  int tag0;
+  int tag1;
   switch(exp->type) {
   case INT_VALUE:
     fprintf(as_file, "  mov w%i, #%i\n", reg, exp->int_value);
@@ -198,26 +200,37 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
     fprintf(as_file, "  cset w%i, le\n", reg);
     break;
   case AND_BINEXP:
+    tag0 = tag_counter++;
+    tag1 = tag_counter++;
     write_expression_assembly(reg, exp->left_operand, as_file);
     fprintf(as_file, "  cmp w%i, 0\n", reg);
-    fprintf(as_file, "  beq .L%i\n", tag_counter);
+    fprintf(as_file, "  beq .L%i\n", tag0);
     write_expression_assembly(reg, exp->right_operand, as_file);
     fprintf(as_file, "  cmp w%i, 0\n", reg);
-    fprintf(as_file, "  beq .L%i\n", tag_counter);
+    fprintf(as_file, "  beq .L%i\n", tag0);
     fprintf(as_file, "  mov w%i, 1\n", reg);
-    fprintf(as_file, "  b .L%i\n", tag_counter+1);
-    fprintf(as_file, ".L%i:\n  mov w%i, 0\n", tag_counter++, reg);
-    fprintf(as_file, ".L%i:\n", tag_counter++);
+    fprintf(as_file, "  b .L%i\n", tag1);
+    fprintf(as_file, ".L%i:\n  mov w%i, 0\n", tag0, reg);
+    fprintf(as_file, ".L%i:\n", tag1);
     //fprintf(as_file, "  ccmp w%i, 0, 4, ne\n", reg+1);
     //fprintf(as_file, "  cset w%i, ne\n", reg);
     break;
   case OR_BINEXP:
-    check_next_reg(reg);
+    tag0 = tag_counter++;
+    tag1 = tag_counter++;
     write_expression_assembly(reg, exp->left_operand, as_file);
-    write_expression_assembly(reg+1, exp->right_operand, as_file);
-    fprintf(as_file, "  orr w%i, w%i, w%i\n", reg, reg, reg+1);
     fprintf(as_file, "  cmp w%i, 0\n", reg);
-    fprintf(as_file, "  cset w%i, ne\n", reg);
+    fprintf(as_file, "  bne .L%i\n", tag0);
+    write_expression_assembly(reg, exp->right_operand, as_file);
+    fprintf(as_file, "  cmp w%i, 0\n", reg);
+    fprintf(as_file, "  bne .L%i\n", tag0);
+    fprintf(as_file, "  mov w%i, 0\n", reg);
+    fprintf(as_file, "  b .L%i\n", tag1);
+    fprintf(as_file, ".L%i:\n  mov w%i, 1\n", tag0, reg);
+    fprintf(as_file, ".L%i:\n", tag1);
+    //fprintf(as_file, "  orr w%i, w%i, w%i\n", reg, reg, reg+1);
+    //fprintf(as_file, "  cmp w%i, 0\n", reg);
+    //fprintf(as_file, "  cset w%i, ne\n", reg);
     break;
   case BITAND_BINEXP:
     check_next_reg(reg);
