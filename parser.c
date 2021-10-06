@@ -35,26 +35,12 @@ ProgramNode parse(TokenList* _tokens)
   ProgramNode prgm;
   prgm.main = NULL;
   curr = tokens->first;
-  int depth = 0;
-  int pdepth = 0;
   FunctionNode* current_func;
   current_func = NULL;
 
   while(!token_list_empty(tokens)) {
     Token tok = token_list_pop_front(tokens);
     switch(tok.type) {
-    case LEFT_BRACE:
-      depth++;
-      break;
-    case RIGHT_BRACE:
-      depth--;
-      break;
-    case LEFT_PAREN:
-      pdepth++;
-      break;
-    case RIGHT_PAREN:
-      pdepth--;
-      break;
     case SEMICOLON:
       break;
     case INT_TOK:
