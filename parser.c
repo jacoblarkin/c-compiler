@@ -39,7 +39,8 @@ ProgramNode parse(TokenList* tokens)
   current_func = NULL;
 
   while(curr) {
-    Token tok = curr->tok;
+    //Token tok = curr->tok;
+    Token tok = token_list_pop_front(tokens);
     switch(tok.type) {
     case LEFT_BRACE:
       depth++;
@@ -56,10 +57,10 @@ ProgramNode parse(TokenList* tokens)
     case SEMICOLON:
       break;
     case INT_TOK:
-      if(curr->next->next->tok.type != LEFT_PAREN) {
+      if(token_list_peek_n(tokens, 1).type != LEFT_PAREN) {
         print_error("Cannot handle global vars.");
       }
-      if(strncmp(curr->next->tok.value, "main", 5)) {
+      if(strncmp(token_list_peek_front(tokens).value, "main", 5)) {
         print_error("Can only declare main function for now.");
       }
       if(prgm.main != NULL) {

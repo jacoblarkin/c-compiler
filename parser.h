@@ -6,6 +6,7 @@
 #include <stdlib.h>
 
 typedef enum ExpressionType_t {
+  UNKNOWN_EXP,
   INT_VALUE,
   NEGATE,
   LOG_NOT,
