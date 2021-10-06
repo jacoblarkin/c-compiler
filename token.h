@@ -110,5 +110,7 @@ Token token_list_pop_front(TokenList*);
 Token token_list_peek_front(TokenList*);
 Token token_list_peek_n(TokenList*, size_t);
 int token_list_push(TokenList*, Token);
+int token_list_push_front(TokenList*, Token);
+int token_list_empty(TokenList*);
 
 #endif
