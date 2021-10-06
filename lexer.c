@@ -153,7 +153,6 @@ void lex_impl(TokenList* list, FILE* file)
         break;
       }
     }
-
     token_list_push(list, new_token);
     tok = get_next_token(file);
   }
@@ -236,9 +235,8 @@ TokenType get_token_type(const char* tok)
       return operators[i].type;
     }
   }
-  for(int i = 0; keywords[i].key != NULL; i++) {
-    int len = strlen(keywords[i].key);
-    if(strncmp(tok, keywords[i].key, len+1) == 0) {
+  for(int i = 0; keywords[i].key; i++) {
+    if(strcmp(tok, keywords[i].key) == 0) {
       return keywords[i].type;
     }
   }
