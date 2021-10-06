@@ -66,6 +66,7 @@ void write_ast_assembly(ProgramNode prgm, FILE* as_file)
       write_statement_assembly(main->body[i], as_file);
     }
     fprintf(as_file, "  add sp, sp, #%i\n", func_stack_offset);
+    fputs("  ret\n", as_file);
   }
 }
 
@@ -75,7 +76,6 @@ void write_statement_assembly(StatementNode* stmt, FILE* as_file)
   switch(stmt->type) {
   case RETURN_STATEMENT:
     write_expression_assembly(X0, stmt->return_value, as_file); 
-    fputs("  ret\n", as_file);
     break;
   case DECLARATION:
     if(find_symbol(stmt->var_name, main_st).name) {
