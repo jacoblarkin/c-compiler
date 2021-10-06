@@ -332,6 +332,7 @@ ExpressionNode* parse_primary_expression()
       print_error("Missing parenthesis");
     }
     ExpressionNode* tmp = parse_operators();
+    token_list_pop_front(tokens); // Pop right paren
     return tmp;
   default: 
     print_error("Cannot parse this primary expression.");
@@ -341,10 +342,9 @@ ExpressionNode* parse_primary_expression()
 
 int find_right_paren()
 {
-  TokenListNode* tmp = curr;
+  TokenListNode* tmp = tokens->first;
   int paren_depth = 1;
   while(paren_depth > 0) {
-    tmp = tmp->next;
     if(tmp->tok.type == RIGHT_PAREN) {
       paren_depth--;
     } else if (tmp->tok.type == LEFT_PAREN) {
@@ -353,6 +353,7 @@ int find_right_paren()
     if(tmp->tok.type == SEMICOLON) {
       return 0;
     }
+    tmp = tmp->next;
   }
   return 1;
 }
