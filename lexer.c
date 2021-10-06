@@ -105,6 +105,7 @@ void lex_impl(TokenList*, FILE*);
 char* get_next_token(FILE*);
 TokenType get_token_type(const char*);
 int is_operator(char);
+int is_operator_str(char*);
 int is_keyop_token(TokenType);
 
 TokenList* lex(const char* filename)
@@ -183,10 +184,12 @@ char* get_next_token(FILE* file)
         char_count++;
         fgetpos(file, &prev);
         c = fgetc(file);
+        char newop[3] = {0};
+        newop[0] = ret[0];
+        newop[1] = c;
         if(ret[0] == '=' && c != '=') { // Can't have any op after = other than =
           fsetpos(file, &prev);
-        } else if(is_operator(c) && c != ')' && c != '}' 
-                                 && c != '(' && c != '{') {
+        } else if(is_operator(c) && is_operator_str(newop)) {
           ret[1] = c;
           char_count++;
           // Check for <<= or >>= (Only possible 3 char operators?)
@@ -262,6 +265,16 @@ int is_operator(char c)
 {
   for(int i = 0; operators[i].key; i++) {
     if(c == operators[i].key[0]) {
+      return 1;
+    }
+  }
+  return 0;
+}
+
+int is_operator_str(char* str)
+{
+  for(int i = 0; operators[i].key; i++) {
+    if(strcmp(str, operators[i].key) == 0) {
       return 1;
     }
   }
