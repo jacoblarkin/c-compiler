@@ -48,19 +48,35 @@ typedef enum ExpressionType_t {
   POSTDEC_EXP
 } ExpressionType;
 
-typedef enum VarType_t {
+typedef enum VarType_e {
   INT_VAR
 } VarType;
 
-typedef enum StatementType_t {
+typedef enum StatementType_e {
   RETURN_STATEMENT,
   DECLARATION,
   EXPRESSION
 } StatementType;
 
-typedef enum ReturnType_t {
+typedef enum ReturnType_e {
   INT_RET
 } ReturnType;
+
+typedef enum TypeModifier_e {
+  NO_MOD = 0,
+  CONST_MOD = 1 << 0,
+  STATIC_MOD = 1 << 1,
+  SHORT_MOD = 1 << 2,
+  LONG_MOD = 1 << 3,
+  LONGLONG_MOD = 1 << 4,
+  SIGNED_MOD = 1 << 5,
+  UNSIGNED_MOD = 1 << 6
+} TypeModifier;
+
+typedef struct CType_s {
+  VarType base;
+  TypeModifier mods;
+} CType;
 
 typedef struct ExpressionNode_t {
   ExpressionType type;

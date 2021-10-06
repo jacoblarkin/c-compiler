@@ -10,8 +10,8 @@ typedef enum State_t {
 } State;
 
 void print_error(const char*);
-FunctionNode* construct_function(void);
-StatementNode* construct_statement(void);
+FunctionNode* construct_function(CType);
+StatementNode* construct_statement(Token);
 ExpressionNode* construct_expression(void);
 int calculate_num_tokens(ExpressionNode*);
 ExpressionNode* parse_primary_expression(void);
@@ -20,16 +20,18 @@ ExpressionNode* parse_operators_impl(ExpressionNode*, int);
 int operator_precedence(Token);
 ExpressionNode* construct_binary_expression(Token, ExpressionNode*, ExpressionNode*);
 ExpressionNode* parse_number(Token);
-ExpressionNode* parse_unary_operator(void);
+ExpressionNode* parse_unary_operator(Token);
 int find_right_paren(void);
 ExpressionNode* parse_assignment(void);
-ExpressionNode* parse_var(void);
+ExpressionNode* parse_var(Token);
 
 // Current Node in token list
 TokenListNode* curr;
+TokenList* tokens;
 
-ProgramNode parse(TokenList* tokens)
+ProgramNode parse(TokenList* _tokens)
 {
+  tokens = _tokens;
   ProgramNode prgm;
   prgm.main = NULL;
   curr = tokens->first;
@@ -38,8 +40,7 @@ ProgramNode parse(TokenList* tokens)
   FunctionNode* current_func;
   current_func = NULL;
 
-  while(curr) {
-    //Token tok = curr->tok;
+  while(!token_list_empty(tokens)) {
     Token tok = token_list_pop_front(tokens);
     switch(tok.type) {
     case LEFT_BRACE:
@@ -66,7 +67,8 @@ ProgramNode parse(TokenList* tokens)
       if(prgm.main != NULL) {
         print_error("More than one main function.");
       }
-      prgm.main = construct_function();
+      CType main_type = {.base = INT_VAR, .mods = NO_MOD};
+      prgm.main = construct_function(main_type);
       current_func = prgm.main;
       break;
     case IDENTIFIER:
@@ -80,7 +82,6 @@ ProgramNode parse(TokenList* tokens)
       print_error("Cannot handle this token.");
       break;
     }
-    curr = curr->next;
   }
   return prgm;
 }
@@ -91,16 +92,17 @@ void print_error(const char * msg)
   exit(1);
 }
 
-FunctionNode* construct_function()
+FunctionNode* construct_function(CType fn_type)
 {
   FunctionNode* func = malloc(sizeof(FunctionNode));
   if(!func) {
     perror("Error");
     exit(1);
   }
-  func->name = curr->next->tok.value;
-  switch(curr->tok.type) {
-  case INT_TOK:
+  Token fn_name = token_list_pop_front(tokens);
+  func->name = fn_name.value;
+  switch(fn_type.base) {
+  case INT_VAR:
     func->type = INT_RET;
     break;
   default:
@@ -108,11 +110,11 @@ FunctionNode* construct_function()
   }
   func->body = NULL;
   func->num_statements = 0;
-  curr = curr->next->next;
   int left_paren = 0;
   int right_paren = 0;
-  while(curr->tok.type != LEFT_BRACE) {
-    switch(curr->tok.type) {
+  Token plist = token_list_pop_front(tokens);
+  while(plist.type != LEFT_BRACE) {
+    switch(plist.type) {
     case LEFT_PAREN:
       left_paren++;
       break;
@@ -123,26 +125,26 @@ FunctionNode* construct_function()
       print_error("Cannot handle arguments right now.");
       break;
     }
-    curr = curr->next;
+    plist = token_list_pop_front(tokens);
   }
   if (left_paren != 1 || right_paren != 1) {
     print_error("Ill formed function declaration. Check parenthesis.");
   }
   func->capacity = 1;
   func->body = calloc(1, sizeof(StatementNode*));
-  curr = curr->next;
+  Token st_begin = token_list_pop_front(tokens);
   int returned = 0;
-  while(curr->tok.type != RIGHT_BRACE) {
+  while(st_begin.type != RIGHT_BRACE) {
     if(func->num_statements == func->capacity) {
       func->capacity *= 2;
       func->body = realloc(func->body,
                            sizeof(StatementNode*) * func->capacity);
     }
-    if(curr->tok.type == RETURN_TOK) {
+    if(st_begin.type == RETURN_TOK) {
       returned = 1;
     }
-    func->body[func->num_statements++] = construct_statement();
-    curr = curr->next;
+    func->body[func->num_statements++] = construct_statement(st_begin);
+    st_begin = token_list_pop_front(tokens);
   }
   if(!returned) {
     StatementNode* stmt = malloc(sizeof(StatementNode));
@@ -161,40 +163,42 @@ FunctionNode* construct_function()
   return func;
 }
 
-StatementNode* construct_statement()
+StatementNode* construct_statement(Token first_tok)
 {
   StatementNode* stmt = malloc(sizeof(StatementNode));
   if(!stmt) {
     perror("Error");
     exit(1);
   }
-  switch(curr->tok.type) {
+  switch(first_tok.type) {
   case RETURN_TOK:
     stmt->type = RETURN_STATEMENT;
-    curr = curr->next;
     stmt->return_value = construct_expression();
     break;
   case INT_TOK:
     stmt->type = DECLARATION;
     stmt->var_type = INT_VAR;
-    curr = curr->next;
-    if(curr->tok.type != IDENTIFIER) {
+    Token name = token_list_peek_front(tokens);
+    if(name.type != IDENTIFIER) {
       print_error("Expected identifier to declar var.");
     }
-    stmt->var_name = curr->tok.value;
+    stmt->var_name = name.value;
     stmt->assignment_expression = NULL;
-    if(curr->next->tok.type == ASSIGN) {
+    Token assign = token_list_peek_n(tokens, 1);
+    if(assign.type == ASSIGN) {
       stmt->assignment_expression = construct_expression();
     } else {
-      curr = curr->next;
+      token_list_pop_front(tokens);
     }
     break;
   default:
     stmt->type = EXPRESSION;
+    token_list_push_front(tokens, first_tok);
     stmt->expression = construct_expression();
     break;
   }
-  if (curr->tok.type != SEMICOLON) {
+  Token semicolon = token_list_pop_front(tokens);
+  if (semicolon.type != SEMICOLON) {
     print_error("Invalid statement.");
   }
   return stmt;
@@ -207,10 +211,11 @@ ExpressionNode* construct_expression()
     perror("Error");
     exit(1);
   }
-  if(curr->tok.type == SEMICOLON) {
+  Token first = token_list_peek_front(tokens);
+  if(first.type == SEMICOLON) {
     print_error("Invalid expression");
   }
-  switch(curr->tok.type) {
+  switch(first.type) {
   case INT_LITERAL:
   case HEX_LITERAL:
   case OCT_LITERAL:
@@ -224,7 +229,6 @@ ExpressionNode* construct_expression()
   default:
     print_error("Can only handle some expressions right now.");
   }
-  //curr = curr->next;
   return exp;
 }
 
@@ -252,36 +256,31 @@ ExpressionNode* parse_number(Token num)
   default:
     print_error("This is not a number");
   }
-  curr = curr->next;
   return number;
 }
 
-ExpressionNode* parse_unary_operator()
+ExpressionNode* parse_unary_operator(Token op)
 {
   ExpressionNode* unary_op = malloc(sizeof(ExpressionNode));
   if(!unary_op) {
     perror("Error");
     exit(1);
   }
-  switch(curr->tok.type) {
+  switch(op.type) {
   case LOGICAL_NOT:
     unary_op->type = LOG_NOT;
-    curr = curr->next;
     unary_op->unary_operand = parse_primary_expression();
     break;
   case BITWISE_NOT:
     unary_op->type = BITWISE_COMP;
-    curr = curr->next;
     unary_op->unary_operand = parse_primary_expression();
     break;
   case MINUS:
     unary_op->type = NEGATE;
-    curr = curr->next;
     unary_op->unary_operand = parse_primary_expression();
     break;
   case PLUSPLUS:
     unary_op->type = PREINC_EXP;
-    curr = curr->next;
     unary_op->unary_operand = parse_primary_expression();
     if(unary_op->unary_operand->type != VAR_EXP) {
       print_error("Pre Inc must act on variable");
@@ -289,7 +288,6 @@ ExpressionNode* parse_unary_operator()
     break;
   case MINUSMINUS:
     unary_op->type = PREDEC_EXP;
-    curr = curr->next;
     unary_op->unary_operand = parse_primary_expression();
     if(unary_op->unary_operand->type != VAR_EXP) {
       print_error("Pre Dec must act on variable");
@@ -301,7 +299,7 @@ ExpressionNode* parse_unary_operator()
   return unary_op;
 }
 
-ExpressionNode* parse_var()
+ExpressionNode* parse_var(Token var)
 {
   ExpressionNode* variable = malloc(sizeof(ExpressionNode));
   if(!variable) {
@@ -309,19 +307,19 @@ ExpressionNode* parse_var()
     exit(1);
   }
   variable->type = VAR_EXP;
-  variable->var_name = curr->tok.value;
-  curr = curr->next;
-  if(curr->tok.type == PLUSPLUS) {
+  variable->var_name = var.value;
+  Token next = token_list_peek_front(tokens);
+  if(next.type == PLUSPLUS) {
     ExpressionNode* pp = malloc(sizeof(ExpressionNode));
     pp->type = POSTINC_EXP;
     pp->unary_operand = variable;
-    curr = curr->next;
+    token_list_pop_front(tokens);
     return pp;
-  } else if(curr->tok.type == MINUSMINUS) {
+  } else if(next.type == MINUSMINUS) {
     ExpressionNode* mm = malloc(sizeof(ExpressionNode));
-    mm->type = POSTINC_EXP;
+    mm->type = POSTDEC_EXP;
     mm->unary_operand = variable;
-    curr = curr->next;
+    token_list_pop_front(tokens);
     return mm;
   }
   return variable;
@@ -329,7 +327,7 @@ ExpressionNode* parse_var()
 
 ExpressionNode* parse_primary_expression()
 {
-  Token tok = curr->tok;
+  Token tok = token_list_pop_front(tokens);
   switch(tok.type) {
   case INT_LITERAL:
   case HEX_LITERAL:
@@ -340,16 +338,14 @@ ExpressionNode* parse_primary_expression()
   case MINUS:
   case PLUSPLUS:
   case MINUSMINUS:
-    return parse_unary_operator();
+    return parse_unary_operator(tok);
   case IDENTIFIER:
-    return parse_var();
+    return parse_var(tok);
   case LEFT_PAREN:
     if(!find_right_paren()) {
       print_error("Missing parenthesis");
     }
-    curr = curr->next;
     ExpressionNode* tmp = parse_operators();
-    curr = curr->next; // Move past right paren
     return tmp;
   default: 
     print_error("Cannot parse this primary expression.");
@@ -383,17 +379,14 @@ ExpressionNode* parse_operators()
 
 ExpressionNode* parse_operators_impl(ExpressionNode* lhs, int min_precedence)
 {
-  Token lookahead = curr->tok;
+  Token lookahead = token_list_peek_front(tokens);
   while(operator_precedence(lookahead) >= min_precedence) {
-    Token op = lookahead;
-    curr = curr->next;
-    // Expect parse_primary_expression to advance curr for us
+    Token op = token_list_pop_front(tokens);
     ExpressionNode* rhs = parse_primary_expression();
-    lookahead = curr->tok;
+    lookahead = token_list_peek_front(tokens);
     while(operator_precedence(lookahead) > operator_precedence(op)) {
-      // Again, this will advance curr for us
       rhs = parse_operators_impl(rhs, min_precedence + 1);
-      lookahead = curr->tok;
+      lookahead = token_list_peek_front(tokens);
     }
     lhs = construct_binary_expression(op, lhs, rhs);
   }
@@ -451,7 +444,8 @@ int operator_precedence(Token op)
   case RIGHT_PAREN:
   case SEMICOLON:
     return -1;
-  default: 
+  default:
+    print_error("Unknown operator"); 
     return 0;
   }
 }
@@ -590,6 +584,9 @@ ExpressionNode* construct_binary_expression(Token op, ExpressionNode* lhs,
       break;
     default:
       print_error("Unknown operator.");
+  }
+  if(!lhs || !rhs) {
+    print_error("Error constructing binary expression");
   }
   binary_exp->left_operand = lhs;
   binary_exp->right_operand = rhs;
