@@ -27,7 +27,7 @@ ExpressionNode* parse_var(Token);
 int right_to_left_operator(Token);
 
 // Current Node in token list
-TokenListNode* curr;
+//TokenListNode* curr;
 TokenList* tokens;
 
 ProgramNode parse(TokenList* _tokens)
@@ -35,7 +35,7 @@ ProgramNode parse(TokenList* _tokens)
   tokens = _tokens;
   ProgramNode prgm;
   prgm.main = NULL;
-  curr = tokens->first;
+  //curr = tokens->first;
   FunctionNode* current_func;
   current_func = NULL;
 
@@ -374,8 +374,8 @@ ExpressionNode* parse_operators_impl(ExpressionNode* lhs, int min_precedence)
     lookahead = token_list_peek_front(tokens);
     while(operator_precedence(lookahead) > operator_precedence(op)
           || (right_to_left_operator(lookahead) 
-              && operator_precedence(lookahead) >= operator_precedence(op))) {
-      rhs = parse_operators_impl(rhs, min_precedence + 1);
+              && operator_precedence(lookahead) == operator_precedence(op))) {
+      rhs = parse_operators_impl(rhs, operator_precedence(op) + 1);
       lookahead = token_list_peek_front(tokens);
     }
     lhs = construct_binary_expression(op, lhs, rhs);
