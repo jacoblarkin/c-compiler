@@ -198,12 +198,18 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
     fprintf(as_file, "  cset w%i, le\n", reg);
     break;
   case AND_BINEXP:
-    check_next_reg(reg);
     write_expression_assembly(reg, exp->left_operand, as_file);
-    write_expression_assembly(reg+1, exp->right_operand, as_file);
     fprintf(as_file, "  cmp w%i, 0\n", reg);
-    fprintf(as_file, "  ccmp w%i, 0, 4, ne\n", reg+1);
-    fprintf(as_file, "  cset w%i, ne\n", reg);
+    fprintf(as_file, "  beq .L%i\n", tag_counter);
+    write_expression_assembly(reg, exp->right_operand, as_file);
+    fprintf(as_file, "  cmp w%i, 0\n", reg);
+    fprintf(as_file, "  beq .L%i\n", tag_counter);
+    fprintf(as_file, "  mov w%i, 1\n", reg);
+    fprintf(as_file, "  b .L%i\n", tag_counter+1);
+    fprintf(as_file, ".L%i:\n  mov w%i, 0\n", tag_counter++, reg);
+    fprintf(as_file, ".L%i:\n", tag_counter++);
+    //fprintf(as_file, "  ccmp w%i, 0, 4, ne\n", reg+1);
+    //fprintf(as_file, "  cset w%i, ne\n", reg);
     break;
   case OR_BINEXP:
     check_next_reg(reg);
