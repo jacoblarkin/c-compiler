@@ -375,7 +375,11 @@ ExpressionNode* parse_operators_impl(ExpressionNode* lhs, int min_precedence)
     while(operator_precedence(lookahead) > operator_precedence(op)
           || (right_to_left_operator(lookahead) 
               && operator_precedence(lookahead) == operator_precedence(op))) {
-      rhs = parse_operators_impl(rhs, operator_precedence(op) + 1);
+      int next_prec = operator_precedence(op);
+      if(!right_to_left_operator(lookahead)) {
+        next_prec++;
+      }
+      rhs = parse_operators_impl(rhs, next_prec);
       lookahead = token_list_peek_front(tokens);
     }
     lhs = construct_binary_expression(op, lhs, rhs);
