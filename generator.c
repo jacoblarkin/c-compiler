@@ -442,10 +442,10 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
     write_expression_assembly(reg, exp->right_operand, as_file);
     break;
   case PREINC_EXP:
-    sym = find_symbol(exp->var_name, main_st);
+    sym = find_symbol(exp->unary_operand->var_name, main_st);
     if(!sym.name) {
       puts("Error: Symbol not found:");
-      puts(exp->var_name);
+      puts(exp->unary_operand->var_name);
       fclose(as_file);
       remove(assembly_filename);
       exit(1);
@@ -455,10 +455,10 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
     fprintf(as_file, "  str w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
     break;
   case PREDEC_EXP:
-    sym = find_symbol(exp->var_name, main_st);
+    sym = find_symbol(exp->unary_operand->var_name, main_st);
     if(!sym.name) {
       puts("Error: Symbol not found:");
-      puts(exp->var_name);
+      puts(exp->unary_operand->var_name);
       fclose(as_file);
       remove(assembly_filename);
       exit(1);
@@ -468,10 +468,10 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
     fprintf(as_file, "  str w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
     break;
   case POSTINC_EXP:
-    sym = find_symbol(exp->var_name, main_st);
+    sym = find_symbol(exp->unary_operand->var_name, main_st);
     if(!sym.name) {
       puts("Error: Symbol not found:");
-      puts(exp->var_name);
+      puts(exp->unary_operand->var_name);
       fclose(as_file);
       remove(assembly_filename);
       exit(1);
@@ -482,10 +482,10 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
     fprintf(as_file, "  str w%i, [sp, %lu]\n", reg+1, func_stack_offset - sym.offset);
     break;
   case POSTDEC_EXP:
-    sym = find_symbol(exp->var_name, main_st);
+    sym = find_symbol(exp->unary_operand->var_name, main_st);
     if(!sym.name) {
       puts("Error: Symbol not found:");
-      puts(exp->var_name);
+      puts(exp->unary_operand->var_name);
       fclose(as_file);
       remove(assembly_filename);
       exit(1);
