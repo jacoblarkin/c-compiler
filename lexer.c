@@ -93,13 +93,13 @@ char* get_next_token(FILE* file)
       }
       st = OPERATOR_TOK;
       ret[char_count++] = c;
-      if(char_count == 3) { // No operators >3 chars
-        break;
-      }
       ret[char_count] = '\0';
       if(char_count > 1 && !is_operator_str(ret)) {
         fsetpos(file, &prev);
         char_count--;
+        break;
+      }
+      if(char_count == 3) { // No operators >3 chars
         break;
       }
       continue;
