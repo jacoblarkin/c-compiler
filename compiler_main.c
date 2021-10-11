@@ -68,8 +68,7 @@ void print_lexemes(TokenList* lexemes)
       puts("RETURN");
       break;
     case IDENTIFIER:
-      puts("IDENTIFIER");
-      puts(curr->tok.value);
+      printf("IDENTIFIER: %s\n", curr->tok.value);
       break;
     case INT_LITERAL:
       printf("INT_LITERAL: %s\n", curr->tok.value);
@@ -172,6 +171,15 @@ void print_lexemes(TokenList* lexemes)
       break;
     case XOREQ:
       puts("XOREQ");
+      break;
+    case COMMA:
+      puts("COMMA");
+      break;
+    case PLUSPLUS:
+      puts("PLUSPLUS");
+      break;
+    case MINUSMINUS:
+      puts("MINUSMINUS");
       break;
     default:
       break;
@@ -420,6 +428,26 @@ void print_expression(ExpressionNode* exp)
     break;
   case VAR_EXP:
     printf("(%s)", exp->var_name);
+    break;
+  case PREINC_EXP:
+    printf("++(");
+    print_expression(exp->unary_operand);
+    printf(")");
+    break;
+  case PREDEC_EXP:
+    printf("--(");
+    print_expression(exp->unary_operand);
+    printf(")");
+    break;
+  case POSTINC_EXP:
+    printf("(");
+    print_expression(exp->unary_operand);
+    printf(")++");
+    break;
+  case POSTDEC_EXP:
+    printf("(");
+    print_expression(exp->unary_operand);
+    printf(")--");
     break;
   default:
     break;
