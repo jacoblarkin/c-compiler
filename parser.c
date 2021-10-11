@@ -1,5 +1,6 @@
 #include "parser.h"
 #include "token.h"
+#include "c_lang.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -13,21 +14,18 @@ void print_error(const char*);
 FunctionNode* construct_function(CType);
 StatementNode* construct_statement(Token);
 ExpressionNode* construct_expression(void);
-int calculate_num_tokens(ExpressionNode*);
 ExpressionNode* parse_primary_expression(void);
 ExpressionNode* parse_operators(void);
 ExpressionNode* parse_operators_impl(ExpressionNode*, int);
-int operator_precedence(Token);
 ExpressionNode* construct_binary_expression(Token, ExpressionNode*, ExpressionNode*);
 ExpressionNode* parse_number(Token);
 ExpressionNode* parse_unary_operator(Token);
-int find_right_paren(void);
 ExpressionNode* parse_assignment(void);
 ExpressionNode* parse_var(Token);
+int operator_precedence(Token);
 int right_to_left_operator(Token);
+int find_right_paren(void);
 
-// Current Node in token list
-//TokenListNode* curr;
 TokenList* tokens;
 
 ProgramNode parse(TokenList* _tokens)
@@ -35,7 +33,6 @@ ProgramNode parse(TokenList* _tokens)
   tokens = _tokens;
   ProgramNode prgm;
   prgm.main = NULL;
-  //curr = tokens->first;
   FunctionNode* current_func;
   current_func = NULL;
 
@@ -253,35 +250,14 @@ ExpressionNode* parse_unary_operator(Token op)
     perror("Error");
     exit(1);
   }
-  switch(op.type) {
-  case LOGICAL_NOT:
-    unary_op->type = LOG_NOT;
-    unary_op->unary_operand = parse_primary_expression();
-    break;
-  case BITWISE_NOT:
-    unary_op->type = BITWISE_COMP;
-    unary_op->unary_operand = parse_primary_expression();
-    break;
-  case MINUS:
-    unary_op->type = NEGATE;
-    unary_op->unary_operand = parse_primary_expression();
-    break;
-  case PLUSPLUS:
-    unary_op->type = PREINC_EXP;
-    unary_op->unary_operand = parse_primary_expression();
-    if(unary_op->unary_operand->type != VAR_EXP) {
-      print_error("Pre Inc must act on variable");
-    }
-    break;
-  case MINUSMINUS:
-    unary_op->type = PREDEC_EXP;
-    unary_op->unary_operand = parse_primary_expression();
-    if(unary_op->unary_operand->type != VAR_EXP) {
-      print_error("Pre Dec must act on variable");
-    }
-    break;
-  default:
-    print_error("This is not a unary operator.");
+  unary_op->type = token_structs[op.type].primary_type;
+  if(unary_op->type == UNKNOWN_EXP) {
+    print_error("Not a unary operator.");
+  }
+  unary_op->unary_operand = parse_primary_expression();
+  if((unary_op->type == PREINC_EXP || unary_op->type == PREDEC_EXP)
+      && unary_op->unary_operand->type != VAR_EXP) {
+    print_error("Pre Inc/Dec must act on variable.");
   }
   return unary_op;
 }
@@ -389,80 +365,12 @@ ExpressionNode* parse_operators_impl(ExpressionNode* lhs, int min_precedence)
 
 int right_to_left_operator(Token op)
 {
-  switch(op.type){
-  case ASSIGN:
-  case PLUSEQ:
-  case MINUSEQ:
-  case TIMESEQ:
-  case DIVEQ:
-  case MODEQ:
-  case ANDEQ:
-  case OREQ:
-  case XOREQ:
-  case RSHEQ:
-  case LSHEQ:
-    return 1;
-  default:
-    return 0;
-  }
-  return 0;
+  return token_structs[op.type].right_assoc;
 }
 
 int operator_precedence(Token op)
 {
-  switch(op.type) {
-  case PLUSPLUS:
-  case MINUSMINUS:
-    return 13;
-  case STAR:
-  case SLASH:
-  case MOD:
-    return 12;
-  case PLUS:
-  case MINUS:
-    return 11;
-  case LSHIFT:
-  case RSHIFT:
-    return 10;
-  case LESSTHAN:
-  case LEQ:
-  case GREATERTHAN:
-  case GEQ:
-    return 9;
-  case EQUAL:
-  case NOTEQUAL:
-    return 8;
-  case BIT_AND:
-    return 7;
-  case BIT_XOR:
-    return 6;
-  case BIT_OR:
-    return 5;
-  case AND:
-    return 4;
-  case OR:
-    return 3;
-  case ASSIGN:
-  case PLUSEQ:
-  case MINUSEQ:
-  case TIMESEQ:
-  case DIVEQ:
-  case MODEQ:
-  case LSHEQ:
-  case RSHEQ:
-  case ANDEQ:
-  case OREQ:
-  case XOREQ:
-    return 2;
-  case COMMA:
-    return 1;
-  case RIGHT_PAREN:
-  case SEMICOLON:
-    return -1;
-  default:
-    print_error("Unknown operator"); 
-    return 0;
-  }
+  return token_structs[op.type].precedence;
 }
 
 ExpressionNode* construct_binary_expression(Token op, ExpressionNode* lhs,
@@ -473,132 +381,13 @@ ExpressionNode* construct_binary_expression(Token op, ExpressionNode* lhs,
     perror("Error");
     exit(1);
   }
-  switch(op.type) {
-    case PLUS:
-      binary_exp->type = ADD_BINEXP;
-      break;
-    case MINUS:
-      binary_exp->type = SUB_BINEXP;
-      break;
-    case STAR:
-      binary_exp->type = MUL_BINEXP;
-      break;
-    case SLASH:
-      binary_exp->type = DIV_BINEXP;
-      break;
-    case MOD:
-      binary_exp->type = MOD_BINEXP;
-      break;
-    case EQUAL:
-      binary_exp->type = EQ_BINEXP;
-      break;
-    case NOTEQUAL:
-      binary_exp->type = NEQ_BINEXP;
-      break;
-    case LESSTHAN:
-      binary_exp->type = LT_BINEXP;
-      break;
-    case LEQ:
-      binary_exp->type = LEQ_BINEXP;
-      break;
-    case GREATERTHAN:
-      binary_exp->type = GT_BINEXP;
-      break;
-    case GEQ:
-      binary_exp->type = GEQ_BINEXP;
-      break;
-    case AND:
-      binary_exp->type = AND_BINEXP;
-      break;
-    case OR:
-      binary_exp->type = OR_BINEXP;
-      break;
-    case BIT_AND:
-      binary_exp->type = BITAND_BINEXP;
-      break;
-    case BIT_OR:
-      binary_exp->type = BITOR_BINEXP;
-      break;
-    case BIT_XOR:
-      binary_exp->type = BITXOR_BINEXP;
-      break;
-    case LSHIFT:
-      binary_exp->type = LSHIFT_BINEXP;
-      break;
-    case RSHIFT:
-      binary_exp->type = RSHIFT_BINEXP;
-      break;
-    case ASSIGN:
-      binary_exp->type = ASSIGN_EXP;
-      if(lhs->type != VAR_EXP) {
-        print_error("Invalid lvalue");
-      }
-      break;
-    case PLUSEQ:
-      binary_exp->type = PLUSEQ_EXP;
-      if(lhs->type != VAR_EXP) {
-        print_error("Invalid lvalue");
-      }
-      break;
-    case MINUSEQ:
-      binary_exp->type = MINUSEQ_EXP;
-      if(lhs->type != VAR_EXP) {
-        print_error("Invalid lvalue");
-      }
-      break;
-    case TIMESEQ:
-      binary_exp->type = TIMESEQ_EXP;
-      if(lhs->type != VAR_EXP) {
-        print_error("Invalid lvalue");
-      }
-      break;
-    case DIVEQ:
-      binary_exp->type = DIVEQ_EXP;
-      if(lhs->type != VAR_EXP) {
-        print_error("Invalid lvalue");
-      }
-      break;
-    case MODEQ:
-      binary_exp->type = MODEQ_EXP;
-      if(lhs->type != VAR_EXP) {
-        print_error("Invalid lvalue");
-      }
-      break;
-    case LSHEQ:
-      binary_exp->type = LSHEQ_EXP;
-      if(lhs->type != VAR_EXP) {
-        print_error("Invalid lvalue");
-      }
-      break;
-    case RSHEQ:
-      binary_exp->type = RSHEQ_EXP;
-      if(lhs->type != VAR_EXP) {
-        print_error("Invalid lvalue");
-      }
-      break;
-    case ANDEQ:
-      binary_exp->type = ANDEQ_EXP;
-      if(lhs->type != VAR_EXP) {
-        print_error("Invalid lvalue");
-      }
-      break;
-    case OREQ:
-      binary_exp->type = OREQ_EXP;
-      if(lhs->type != VAR_EXP) {
-        print_error("Invalid lvalue");
-      }
-      break;
-    case XOREQ:
-      binary_exp->type = XOREQ_EXP;
-      if(lhs->type != VAR_EXP) {
-        print_error("Invalid lvalue");
-      }
-      break;
-    case COMMA:
-      binary_exp->type = COMMA_EXP;
-      break;
-    default:
-      print_error("Unknown operator.");
+  binary_exp->type = token_structs[op.type].binary_type;
+  if(binary_exp->type == UNKNOWN_EXP) {
+    print_error("Unknown binary expression.");
+  }
+  if(token_structs[op.type].need_lvalue 
+      && lhs->type != VAR_EXP) {
+    print_error("Invalid lvalue");
   }
   if(!lhs || !rhs) {
     print_error("Error constructing binary expression");
@@ -606,20 +395,4 @@ ExpressionNode* construct_binary_expression(Token op, ExpressionNode* lhs,
   binary_exp->left_operand = lhs;
   binary_exp->right_operand = rhs;
   return binary_exp;
-}
-
-int calculate_num_tokens(ExpressionNode* exp)
-{
-  switch(exp->type)
-  {
-  case INT_VALUE:
-    return 1;
-  case LOG_NOT:
-  case BITWISE_COMP:
-  case NEGATE:
-    return 1 + calculate_num_tokens(exp->unary_operand);
-  default:
-    print_error("Unrecognized expression type");
-  }
-  return 0;
 }
