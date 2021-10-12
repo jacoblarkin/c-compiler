@@ -23,7 +23,7 @@ ExpressionNode* parse_unary_operator(Token);
 ExpressionNode* parse_assignment(void);
 ExpressionNode* parse_var(Token);
 int operator_precedence(Token);
-int right_to_left_operator(Token);
+int right_assoc_operator(Token);
 int find_right_paren(void);
 
 TokenList* tokens;
@@ -291,20 +291,18 @@ ExpressionNode* parse_var(Token var)
 ExpressionNode* parse_primary_expression()
 {
   Token tok = token_list_pop_front(tokens);
-  switch(tok.type) {
-  case INT_LITERAL:
-  case HEX_LITERAL:
-  case OCT_LITERAL:
+  TokenType type = tok.type;
+  switch(token_structs[type].syntax) {
+  case LITERAL_ST:
     return parse_number(tok);
-  case LOGICAL_NOT:
-  case BITWISE_NOT:
-  case MINUS:
-  case PLUSPLUS:
-  case MINUSMINUS:
+  case OPERATOR_ST:
     return parse_unary_operator(tok);
-  case IDENTIFIER:
+  case IDENTIFIER_ST:
     return parse_var(tok);
-  case LEFT_PAREN:
+  case BRACE_ST:
+    if (type != LEFT_PAREN) {
+      print_error("Invalid Expression.");
+    }
     if(!find_right_paren()) {
       print_error("Missing parenthesis");
     }
@@ -349,10 +347,10 @@ ExpressionNode* parse_operators_impl(ExpressionNode* lhs, int min_precedence)
     ExpressionNode* rhs = parse_primary_expression();
     lookahead = token_list_peek_front(tokens);
     while(operator_precedence(lookahead) > operator_precedence(op)
-          || (right_to_left_operator(lookahead) 
+          || (right_assoc_operator(lookahead) 
               && operator_precedence(lookahead) == operator_precedence(op))) {
       int next_prec = operator_precedence(op);
-      if(!right_to_left_operator(lookahead)) {
+      if(!right_assoc_operator(lookahead)) {
         next_prec++;
       }
       rhs = parse_operators_impl(rhs, next_prec);
@@ -363,7 +361,7 @@ ExpressionNode* parse_operators_impl(ExpressionNode* lhs, int min_precedence)
   return lhs;
 }
 
-int right_to_left_operator(Token op)
+int right_assoc_operator(Token op)
 {
   return token_structs[op.type].right_assoc;
 }
