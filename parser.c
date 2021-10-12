@@ -240,6 +240,7 @@ ExpressionNode* parse_number(Token num)
   default:
     print_error("This is not a number");
   }
+  free(num.value);
   return number;
 }
 
