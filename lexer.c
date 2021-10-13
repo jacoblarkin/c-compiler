@@ -71,7 +71,7 @@ char* get_next_token(FILE* file)
   while(1) {
     fpos_t prev;
     fgetpos(file, &prev);
-    char c = fgetc(file);
+    char c = (char)fgetc(file);
     if(c == EOF) {
       if(st != UNKNOWN_TOK) {
         fsetpos(file, &prev);

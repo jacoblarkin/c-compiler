@@ -1,5 +1,5 @@
-#ifndef __PPRINT_H__
-#define __PPRINT_H__
+#ifndef PPRINT_H_
+#define PPRINT_H_
 
 #include "token.h"
 #include "parser.h"

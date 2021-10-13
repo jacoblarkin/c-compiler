@@ -1,5 +1,5 @@
-#ifndef __PARSER_H__
-#define __PARSER_H__
+#ifndef PARSER_H_
+#define PARSER_H_
 
 #include "token.h"
 

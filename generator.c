@@ -28,7 +28,7 @@ char* assembly_filename;
 
 void generate_assembly(ProgramNode prgm, const char* filename)
 {
-  int len = strlen(filename);
+  unsigned long len = strlen(filename);
   assembly_filename = calloc(len+1, sizeof(char));
   strncpy(assembly_filename, filename, len);
   assembly_filename[len-1] = 's';

@@ -1,5 +1,5 @@
-#ifndef __C_LANG_H__
-#define __C_LANG_H__
+#ifndef C_LANG_H_
+#define C_LANG_H_
 
 #include "token.h"
 #include "parser.h"

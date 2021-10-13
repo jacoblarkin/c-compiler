@@ -33,8 +33,6 @@ ProgramNode parse(TokenList* _tokens)
   tokens = _tokens;
   ProgramNode prgm;
   prgm.main = NULL;
-  FunctionNode* current_func;
-  current_func = NULL;
 
   while(!token_list_empty(tokens)) {
     Token tok = token_list_pop_front(tokens);
@@ -45,7 +43,7 @@ ProgramNode parse(TokenList* _tokens)
       if(token_list_peek_n(tokens, 1).type != LEFT_PAREN) {
         print_error("Cannot handle global vars.");
       }
-      if(strncmp(token_list_peek_front(tokens).value, "main", 5)) {
+      if(strcmp(token_list_peek_front(tokens).value, "main") != 0) {
         print_error("Can only declare main function for now.");
       }
       if(prgm.main != NULL) {
@@ -53,7 +51,6 @@ ProgramNode parse(TokenList* _tokens)
       }
       CType main_type = {.base = INT_VAR, .mods = NO_MOD};
       prgm.main = construct_function(main_type);
-      current_func = prgm.main;
       break;
     case IDENTIFIER:
       print_error("Cannot handle most statements right now.");
@@ -190,15 +187,11 @@ StatementNode* construct_statement(Token first_tok)
 
 ExpressionNode* construct_expression()
 {
-  ExpressionNode* exp = malloc(sizeof(ExpressionNode));
-  if(!exp) {
-    perror("Error");
-    exit(1);
-  }
   Token first = token_list_peek_front(tokens);
   if(first.type == SEMICOLON) {
     print_error("Invalid expression");
   }
+  ExpressionNode* exp;
   switch(first.type) {
   case INT_LITERAL:
   case HEX_LITERAL:
@@ -231,11 +224,11 @@ ExpressionNode* parse_number(Token num)
     break;
   case HEX_LITERAL:
     number->type = INT_VALUE;
-    number->int_value = strtol(num.value, &dummy, 16);
+    number->int_value = (int)strtoul(num.value, &dummy, 16);
     break;
   case OCT_LITERAL:
     number->type = INT_VALUE;
-    number->int_value = strtol(num.value, &dummy, 8);
+    number->int_value = (int)strtoul(num.value, &dummy, 8);
     break;
   default:
     print_error("This is not a number");

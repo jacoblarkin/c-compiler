@@ -1,5 +1,5 @@
-#ifndef __TOKEN_H__
-#define __TOKEN_H__
+#ifndef TOKEN_H_
+#define TOKEN_H_
 
 #include <stddef.h>
 

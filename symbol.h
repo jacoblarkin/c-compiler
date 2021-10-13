@@ -1,3 +1,6 @@
+#ifndef SYMBOL_H_
+#define SYMBOL_H_
+
 #include <stdlib.h>
 
 typedef struct Symbol_s {
@@ -22,3 +25,5 @@ extern SymbolTable global_symbol_table;
 void push_symbol(Symbol, SymbolTable*);
 void push_constructed_symbol(char*, size_t, SymbolTable*);
 Symbol find_symbol(char*, SymbolTable*);
+
+#endif
