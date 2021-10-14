@@ -45,7 +45,8 @@ typedef enum ExpressionType_t {
   PREINC_EXP,
   POSTINC_EXP,
   PREDEC_EXP,
-  POSTDEC_EXP
+  POSTDEC_EXP,
+  COND_EXP
 } ExpressionType;
 
 typedef enum VarType_e {
@@ -57,9 +58,14 @@ typedef enum VarType_e {
 
 typedef enum StatementType_e {
   RETURN_STATEMENT,
-  DECLARATION,
-  EXPRESSION
+  EXPRESSION,
+  CONDITIONAL
 } StatementType;
+
+typedef enum BlockItemType_e {
+  STATEMENT_ITEM,
+  DECLARATION_ITEM
+} BlockItemType;
 
 typedef enum ReturnType_e {
   INT_RET
@@ -73,7 +79,12 @@ typedef enum TypeModifier_e {
   LONG_MOD = 1 << 3,
   LONGLONG_MOD = 1 << 4,
   SIGNED_MOD = 1 << 5,
-  UNSIGNED_MOD = 1 << 6
+  UNSIGNED_MOD = 1 << 6,
+  VOLATILE_MOD = 1 << 7,
+  REGISTER_MOD = 1 << 8,
+  RESTRICT_MOD = 1 << 9,
+  AUTO_MOD = 1 << 10,
+  EXTERN_MOD = 1 << 11
 } TypeModifier;
 
 typedef struct CType_s {
@@ -81,41 +92,63 @@ typedef struct CType_s {
   TypeModifier mods;
 } CType;
 
-typedef struct ExpressionNode_t {
+typedef struct ExpressionNode_s {
   ExpressionType type;
   union {
     int int_value;
-    struct ExpressionNode_t *unary_operand;
+    struct ExpressionNode_s* unary_operand;
     struct { // For binary operators
-      struct ExpressionNode_t *left_operand;
-      struct ExpressionNode_t *right_operand;
+      struct ExpressionNode_s* left_operand;
+      struct ExpressionNode_s* right_operand;
+    };
+    struct { // For Conditionals
+      struct ExpressionNode_s* condition;
+      struct ExpressionNode_s* if_exp;
+      struct ExpressionNode_s* else_exp;
     };
     char* var_name; // For VAR
   };
 } ExpressionNode;
 
-typedef struct StatementNode_t {
+typedef struct DeclarationNode_s {
+  VarType var_type;
+  char* var_name;
+  ExpressionNode* assignment_expression;
+} DeclarationNode;
+
+typedef struct StatementNode_s {
   StatementType type;
   union {
-    ExpressionNode* return_value;
-    struct {  // Declare var
-      VarType var_type;
-      char* var_name;
-      ExpressionNode* assignment_expression;
-    };
     ExpressionNode* expression;
+    struct {
+      ExpressionNode* condition;
+      struct StatementNode_s* if_stmt;
+      struct StatementNode_s* else_stmt;
+    };
   };
 } StatementNode;
 
-typedef struct FunctionNode_t {
+typedef struct BlockItem_s {
+  BlockItemType type;
+  union {
+    StatementNode* stmt;
+    DeclarationNode* decl;
+  };
+} BlockItem;
+
+typedef struct BlockNode_s {
+  BlockItem** body;
+  size_t count;
+  size_t capacity;
+} BlockNode;
+
+typedef struct FunctionNode_s {
   char* name;
   ReturnType type;
-  StatementNode** body;
-  size_t num_statements;
-  size_t capacity;
+  BlockNode* body;
 } FunctionNode;
 
-typedef struct ProgramNode_t {
+typedef struct ProgramNode_s {
   FunctionNode* main;
 } ProgramNode;
 
