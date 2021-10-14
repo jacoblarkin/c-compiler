@@ -27,6 +27,7 @@ ExpressionNode* parse_var(Token);
 int operator_precedence(Token);
 int right_assoc_operator(Token);
 int find_right_paren(void);
+void handle_ternary(void);
 
 TokenList* tokens;
 
@@ -113,8 +114,8 @@ FunctionNode* construct_function(CType fn_type)
   }
   int returned = 0;
   func->body = construct_block();
-  BlockItem* last_item = func->body->body[func->body->count];
-  if(last_item->type == STATEMENT_ITEM 
+  BlockItem* last_item = func->body->body[func->body->count - 1];
+  if(last_item && last_item->type == STATEMENT_ITEM 
       && last_item->stmt->type == RETURN_STATEMENT) {
     returned = 1;
   }
@@ -210,20 +211,41 @@ StatementNode* construct_statement(Token first_tok)
     perror("Error");
     exit(1);
   }
+  Token semicolon;
   switch(first_tok.type) {
   case RETURN_TOK:
     stmt->type = RETURN_STATEMENT;
     stmt->expression = construct_expression();
+    semicolon = token_list_pop_front(tokens);
+    if (semicolon.type != SEMICOLON) {
+      print_error("Invalid statement.");
+    }
+    break;
+  case IF_TOK:
+    stmt->type = CONDITIONAL;
+    if(token_list_peek_front(tokens).type != LEFT_PAREN) {
+      print_error("Invalid if statement.");
+    }
+    stmt->condition = parse_primary_expression();
+    Token next = token_list_pop_front(tokens);
+    stmt->if_stmt = construct_statement(next);
+    stmt->else_stmt = NULL;
+    next = token_list_peek_front(tokens);
+    if(next.type == ELSE_TOK) {
+      token_list_pop_front(tokens); // else
+      next = token_list_pop_front(tokens);
+      stmt->else_stmt = construct_statement(next);
+    }
     break;
   default:
     stmt->type = EXPRESSION;
     token_list_push_front(tokens, first_tok);
     stmt->expression = construct_expression();
+    semicolon = token_list_pop_front(tokens);
+    if (semicolon.type != SEMICOLON) {
+      print_error("Invalid statement.");
+    }
     break;
-  }
-  Token semicolon = token_list_pop_front(tokens);
-  if (semicolon.type != SEMICOLON) {
-    print_error("Invalid statement.");
   }
   return stmt;
 }
@@ -232,7 +254,7 @@ ExpressionNode* construct_expression()
 {
   Token first = token_list_peek_front(tokens);
   if(first.type == SEMICOLON) {
-    print_error("Invalid expression");
+    print_error("Invalid expression. Empty.");
   }
   ExpressionNode* exp = NULL;
   switch(first.type) {
@@ -338,7 +360,7 @@ ExpressionNode* parse_primary_expression()
     return parse_var(tok);
   case BRACE_ST:
     if (type != LEFT_PAREN) {
-      print_error("Invalid Expression.");
+      print_error("Invalid Expression. Expected (.");
     }
     if(!find_right_paren()) {
       print_error("Missing parenthesis");
@@ -379,6 +401,9 @@ ExpressionNode* parse_operators()
 ExpressionNode* parse_operators_impl(ExpressionNode* lhs, int min_precedence)
 {
   Token lookahead = token_list_peek_front(tokens);
+  if(lookahead.type == QMARK) {
+    handle_ternary();
+  }
   while(operator_precedence(lookahead) >= min_precedence) {
     Token op = token_list_pop_front(tokens);
     ExpressionNode* rhs = parse_primary_expression();
@@ -396,6 +421,45 @@ ExpressionNode* parse_operators_impl(ExpressionNode* lhs, int min_precedence)
     lhs = construct_binary_expression(op, lhs, rhs);
   }
   return lhs;
+}
+
+void handle_ternary()
+{
+  TokenListNode* curr = tokens->first;
+  Token left = {.type = LEFT_PAREN, .value = NULL};
+  Token right = {.type = RIGHT_PAREN, .value = NULL};
+  TokenList mock;
+  mock.first = tokens->first->next;
+  mock.last = tokens->first->next;
+  token_list_push_front(&mock, left);
+  mock.first->prev = curr;
+  curr->next = mock.first;
+  int numQ = 1;
+  int numC = 0;
+  while(numQ > numC) {
+    switch(mock.last->tok.type) {
+    case QMARK:
+      numQ++;
+      break;
+    case COLON:
+      numC++;
+      break;
+    case SEMICOLON:
+      print_error("Incomplete ternary operator expression.");
+      break;
+    default:
+      break;
+    }
+    if(!mock.last->next) {
+      print_error("Incomplete ternary operator expression.");
+    }
+    mock.last = mock.last->next;
+  }
+  curr = mock.last->prev;
+  mock.last = mock.last->prev->prev;
+  token_list_push(&mock, right);
+  curr->prev = mock.last;
+  mock.last->next = curr;
 }
 
 int right_assoc_operator(Token op)
@@ -419,6 +483,19 @@ ExpressionNode* construct_binary_expression(Token op, ExpressionNode* lhs,
   binary_exp->type = token_structs[op.type].binary_type;
   if(binary_exp->type == UNKNOWN_EXP) {
     print_error("Unknown binary expression.");
+  }
+  if(binary_exp->type == COND_EXP && op.type == QMARK) {
+    binary_exp->condition = lhs;
+    binary_exp->if_exp = rhs;
+    binary_exp->else_exp = NULL;
+    return binary_exp;
+  } else if(binary_exp->type == COND_EXP && op.type == COLON) {
+    free(binary_exp);
+    if(lhs->type != COND_EXP || lhs->else_exp) {
+      print_error("Invalid conditional expression.");
+    }
+    lhs->else_exp = rhs;
+    return lhs;
   }
   if(token_structs[op.type].need_lvalue 
       && lhs->type != VAR_EXP) {

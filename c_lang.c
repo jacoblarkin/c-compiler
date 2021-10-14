@@ -83,7 +83,7 @@ struct TokenStruct_s token_structs[84] = {
   {PLUSPLUS,     OPERATOR_ST,   PREINC_EXP,  UNKNOWN_EXP,   14, 0, 0, "++",       "PLUSPLUS"},
   {MINUSMINUS,   OPERATOR_ST,   PREDEC_EXP,  UNKNOWN_EXP,   14, 0, 0, "--",       "MINUSMINUS"},
   {QMARK,        OPERATOR_ST,   UNKNOWN_EXP, COND_EXP,       3, 1, 0, "?",        "QMARK"},
-  {COLON,        OPERATOR_ST,   UNKNOWN_EXP, UNKNOWN_EXP,    3, 0, 0, ":",        "COLON"},
+  {COLON,        OPERATOR_ST,   UNKNOWN_EXP, COND_EXP,       3, 0, 0, ":",        "COLON"},
   {DOT,          OPERATOR_ST,   UNKNOWN_EXP, UNKNOWN_EXP,   14, 0, 0, ".",        "DOT"},
   {ARROW,        OPERATOR_ST,   UNKNOWN_EXP, UNKNOWN_EXP,   14, 0, 0, "->",       "ARROW"},
   {UNKNOWN,      UNKNOWN_ST,    UNKNOWN_EXP, UNKNOWN_EXP,    0, 0, 0, 0,            0}
