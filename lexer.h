@@ -1,5 +1,5 @@
-#ifndef __LEXER_H__
-#define __LEXER_H__
+#ifndef LEXER_H_
+#define LEXER_H_
 
 #include "token.h"
 

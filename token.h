@@ -1,5 +1,7 @@
-#ifndef __TOKEN_H__
-#define __TOKEN_H__
+#ifndef TOKEN_H_
+#define TOKEN_H_
+
+#include <stddef.h>
 
 typedef enum TokenType_e {
   UNKNOWN = 0,
@@ -7,9 +9,42 @@ typedef enum TokenType_e {
   RIGHT_BRACE,
   LEFT_PAREN,
   RIGHT_PAREN,
+  LEFT_SQUARE,
+  RIGHT_SQUARE,
   SEMICOLON,
-  INT,
-  RETURN,
+  BREAK_TOK,
+  CASE_TOK,
+  CHAR_TOK,
+  CONST_TOK,
+  CONTINUE_TOK,
+  DEFAULT_TOK,
+  DO_TOK,
+  DOUBLE_TOK,
+  ELSE_TOK,
+  ENUM_TOK,
+  EXTERN_TOK,
+  FLOAT_TOK,
+  FOR_TOK,
+  GOTO_TOK,
+  IF_TOK,
+  INLINE_TOK,
+  INT_TOK,
+  LONG_TOK,
+  REGISTER_TOK,
+  RESTRICT_TOK,
+  RETURN_TOK,
+  SHORT_TOK,
+  SIGNED_TOK,
+  SIZEOF_TOK,
+  STATIC_TOK,
+  STRUCT_TOK,
+  SWITCH_TOK,
+  TYPEDEF_TOK,
+  UNION_TOK,
+  UNSIGNED_TOK,
+  VOID_TOK,
+  VOLATILE_TOK,
+  WHILE_TOK,
   IDENTIFIER,
   INT_LITERAL,
   HEX_LITERAL,
@@ -47,7 +82,11 @@ typedef enum TokenType_e {
   XOREQ,
   COMMA,
   PLUSPLUS,
-  MINUSMINUS
+  MINUSMINUS,
+  QMARK,
+  COLON,
+  DOT,
+  ARROW
 } TokenType;
 
 typedef struct Token_s {
@@ -68,6 +107,10 @@ typedef struct TokenList_s {
 
 Token token_list_pop_back(TokenList*);
 Token token_list_pop_front(TokenList*);
+Token token_list_peek_front(TokenList*);
+Token token_list_peek_n(TokenList*, size_t);
 int token_list_push(TokenList*, Token);
+int token_list_push_front(TokenList*, Token);
+int token_list_empty(TokenList*);
 
 #endif

@@ -1,78 +1,26 @@
 #include "lexer.h"
 #include "token.h"
+#include "c_lang.h"
 
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-struct keyword_pair {
-  const char* key;
-  TokenType type;
-};
-
-struct operator_pair {
-  const char* key;
-  TokenType type;
-};
-
-struct keyword_pair keywords[] = 
-{
-  {"return", RETURN},
-  {"int", INT},
-  {NULL, UNKNOWN}
-};
-
-struct operator_pair operators[] = 
-{
-  {"{", LEFT_BRACE},
-  {"}", RIGHT_BRACE},
-  {"(", LEFT_PAREN},
-  {")", RIGHT_PAREN},
-  {";", SEMICOLON},
-  {"=", ASSIGN},
-  {"!", LOGICAL_NOT},
-  {"~", BITWISE_NOT},
-  {"-", MINUS},
-  {"+", PLUS},
-  {"*", STAR},
-  {"/", SLASH},
-  {"&&", AND},
-  {"||", OR},
-  {"==", EQUAL},
-  {"!=", NOTEQUAL},
-  {"<", LESSTHAN},
-  {"<=", LEQ},
-  {">", GREATERTHAN},
-  {">=", GEQ},
-  {"%", MOD},
-  {"&", BIT_AND},
-  {"|", BIT_OR},
-  {"^", BIT_XOR},
-  {"<<", LSHIFT},
-  {">>", RSHIFT},
-  {"+=", PLUSEQ},
-  {"-=", MINUSEQ},
-  {"*=", TIMESEQ},
-  {"/=", DIVEQ},
-  {"%=", MODEQ},
-  {"<<=", LSHEQ},
-  {">>=", RSHEQ},
-  {"&=", ANDEQ},
-  {"|=", OREQ},
-  {"^=", XOREQ},
-  {",", COMMA},
-  {"++", PLUSPLUS},
-  {"--", MINUSMINUS},
-  { 0 , UNKNOWN}
-};
+typedef enum TokenState_e {
+  UNKNOWN_TOK = 0,
+  OPERATOR_TOK,
+  NUMBER_TOK,
+  WORD_TOK
+} TokenState;
 
 const char* whitespace_delimiters = " \t\r\f\v\n";
+const char* operators_str = "&|^~!(){}[]+-*/%=?:;.,<>";
 
 void lex_impl(TokenList*, FILE*);
 char* get_next_token(FILE*);
 TokenType get_token_type(const char*);
-int is_operator(char);
+int is_operator_str(char*);
 
 TokenList* lex(const char* filename)
 {
@@ -99,65 +47,14 @@ void lex_impl(TokenList* list, FILE* file)
 
   tok = get_next_token(file);
   while(tok) {
-    new_token.type = UNKNOWN;
-    new_token.value = NULL;
-
     TokenType tt = get_token_type(tok);
-    switch(tt) {
-    case LEFT_BRACE:
-    case RIGHT_BRACE:
-    case LEFT_PAREN:
-    case RIGHT_PAREN:
-    case SEMICOLON:
-    case LOGICAL_NOT:
-    case BITWISE_NOT:
-    case ASSIGN:
-    case MINUS:
-    case PLUS:
-    case STAR:
-    case SLASH:
-    case EQUAL:
-    case NOTEQUAL:
-    case AND:
-    case OR:
-    case LESSTHAN:
-    case LEQ:
-    case GREATERTHAN:
-    case GEQ:
-    case MOD:
-    case BIT_AND:
-    case BIT_OR:
-    case BIT_XOR:
-    case LSHIFT:
-    case RSHIFT:
-    case INT:
-    case RETURN:
-    case PLUSEQ:
-    case MINUSEQ:
-    case TIMESEQ:
-    case DIVEQ:
-    case MODEQ:
-    case LSHEQ:
-    case RSHEQ:
-    case ANDEQ:
-    case OREQ:
-    case XOREQ:
-    case COMMA:
-    case PLUSPLUS:
-    case MINUSMINUS:
-      new_token.type = tt;
-      free(tok);
-      break;
-    case IDENTIFIER:
-    case INT_LITERAL:
-    case HEX_LITERAL:
-    case OCT_LITERAL:
-      new_token.type = tt;
+    new_token.type = tt;    
+    if(token_structs[tt].syntax == IDENTIFIER_ST
+        || token_structs[tt].syntax == LITERAL_ST) {
       new_token.value = tok;
-      break;
-    default:
+    } else {
+      new_token.value = NULL;
       free(tok);
-      break;
     }
 
     token_list_push(list, new_token);
@@ -169,54 +66,50 @@ char* get_next_token(FILE* file)
 {
   int capacity = 256;
   int char_count = 0;
+  TokenState st = UNKNOWN_TOK;
   char* ret = malloc(sizeof(char)*capacity);
   while(1) {
     fpos_t prev;
     fgetpos(file, &prev);
-    char c = fgetc(file);
+    char c = (char)fgetc(file);
     if(c == EOF) {
+      if(st != UNKNOWN_TOK) {
+        fsetpos(file, &prev);
+        break;
+      }
+      free(ret);
       return NULL;
-      break;
     }
-    if(c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == '\v') {
-      if(char_count == 0) {
+    if(strchr(whitespace_delimiters, c)) {
+      if(st == UNKNOWN_TOK) {
         continue;
       }
       break;
     }
-    if(is_operator(c)) {
-      if(char_count == 0) {
-        ret[0] = c;
-        char_count++;
-        fgetpos(file, &prev);
-        c = fgetc(file);
-        if(ret[0] == '=' && c != '=') { // Can't have any op after = other than =
-          fsetpos(file, &prev);
-        } else if(is_operator(c) && c != ')' && c != '}' 
-                                 && c != '(' && c != '{') {
-          ret[1] = c;
-          char_count++;
-          // Check for <<= or >>= (Only possible 3 char operators?)
-          if((ret[0]=='<' && ret[1]=='<') || (ret[0]=='>' && ret[0]=='>')) {
-            fgetpos(file, &prev);
-            c = fgetc(file);
-            if(c == '=') { // if <<= or >>=
-              ret[2] = c;
-              char_count++;
-            } else { // if not <<= or >>=
-              fsetpos(file, &prev);
-            }
-          }
-        } else { // Only a single char operator
-          fsetpos(file, &prev);  
-        }
+    if(strchr(operators_str, c)) {
+      if(st != UNKNOWN_TOK && st != OPERATOR_TOK) {
+        fsetpos(file, &prev);
         break;
       }
+      st = OPERATOR_TOK;
+      ret[char_count++] = c;
+      ret[char_count] = '\0';
+      if(char_count > 1 && !is_operator_str(ret)) {
+        fsetpos(file, &prev);
+        char_count--;
+        break;
+      }
+      if(char_count == 3) { // No operators >3 chars
+        break;
+      }
+      continue;
+    }
+    if(st == OPERATOR_TOK) {
       fsetpos(file, &prev);
       break;
     }
-    ret[char_count] = c;
-    char_count++;
+    ret[char_count++] = c;
+    st = WORD_TOK;
     if(char_count == capacity) {
       capacity += 256;
       ret = realloc(ret, sizeof(char)*capacity);
@@ -237,24 +130,19 @@ TokenType get_token_type(const char* tok)
     }
     return INT_LITERAL;
   }
-  for(int i = 0; operators[i].key; i++) {
-    if(strcmp(tok, operators[i].key) == 0) {
-      return operators[i].type;
-    }
-  }
-  for(int i = 0; keywords[i].key != NULL; i++) {
-    int len = strlen(keywords[i].key);
-    if(strncmp(tok, keywords[i].key, len+1) == 0) {
-      return keywords[i].type;
+  for(int i = 1; token_structs[i].tok_type; i++) {
+    if(strcmp(tok, token_structs[i].name) == 0) {
+      return token_structs[i].tok_type;
     }
   }
   return IDENTIFIER;
 }
 
-int is_operator(char c)
+int is_operator_str(char* str)
 {
-  for(int i = 0; operators[i].key; i++) {
-    if(c == operators[i].key[0]) {
+  for(int i = 1; token_structs[i].tok_type; i++) {
+    if(token_structs[i].syntax == OPERATOR_ST
+        && strcmp(str, token_structs[i].name) == 0) {
       return 1;
     }
   }
