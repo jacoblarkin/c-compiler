@@ -191,7 +191,7 @@ ExpressionNode* construct_expression()
   if(first.type == SEMICOLON) {
     print_error("Invalid expression");
   }
-  ExpressionNode* exp;
+  ExpressionNode* exp = NULL;
   switch(first.type) {
   case INT_LITERAL:
   case HEX_LITERAL:
