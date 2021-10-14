@@ -13,6 +13,7 @@ typedef enum Register_t {
 } Register;
 
 void write_ast_assembly(ProgramNode, FILE*);
+void write_declaration_assembly(DeclarationNode*, FILE*);
 void write_statement_assembly(StatementNode*, FILE*);
 void write_expression_assembly(Register, ExpressionNode*, FILE*);
 void check_next_reg(Register);
@@ -62,35 +63,42 @@ void write_ast_assembly(ProgramNode prgm, FILE* as_file)
     }
     fprintf(as_file, "  sub sp, sp, #%i\n", func_stack_offset);
     FunctionNode* main = prgm.main;
-    for(unsigned int i = 0; i < main->num_statements; i++) {
-      write_statement_assembly(main->body[i], as_file);
+    for(unsigned int i = 0; i < main->body->count; i++) {
+      BlockItem* item = main->body->body[i];
+      if(item->type == STATEMENT_ITEM) {
+        write_statement_assembly(item->stmt, as_file);
+      } else {
+        write_declaration_assembly(item->decl, as_file);
+      }
     }
     fprintf(as_file, "  add sp, sp, #%i\n", func_stack_offset);
     fputs("  ret\n", as_file);
   }
 }
 
-void write_statement_assembly(StatementNode* stmt, FILE* as_file)
+void write_declaration_assembly(DeclarationNode* decl, FILE* as_file)
 {
   static int next_offset = 4;
+  if(find_symbol(decl->var_name, main_st).name) {
+    puts("Error: duplicate declaration of variable:");
+    puts(decl->var_name);
+    fclose(as_file);
+    remove(assembly_filename);
+    exit(1);
+  }
+  push_constructed_symbol(decl->var_name, next_offset, main_st);
+  if(decl->assignment_expression) {
+    write_expression_assembly(X0, decl->assignment_expression, as_file);
+    //fprintf(as_file, "  str w0, [sp, %i]\n", func_stack_offset - next_offset);
+  }
+  next_offset += 4;
+}
+
+void write_statement_assembly(StatementNode* stmt, FILE* as_file)
+{
   switch(stmt->type) {
   case RETURN_STATEMENT:
-    write_expression_assembly(X0, stmt->return_value, as_file); 
-    break;
-  case DECLARATION:
-    if(find_symbol(stmt->var_name, main_st).name) {
-      puts("Error: duplicate declaration of variable:");
-      puts(stmt->var_name);
-      fclose(as_file);
-      remove(assembly_filename);
-      exit(1);
-    }
-    push_constructed_symbol(stmt->var_name, next_offset, main_st);
-    if(stmt->assignment_expression) {
-      write_expression_assembly(X0, stmt->assignment_expression, as_file);
-      //fprintf(as_file, "  str w0, [sp, %i]\n", func_stack_offset - next_offset);
-    }
-    next_offset += 4;
+    write_expression_assembly(X0, stmt->expression, as_file); 
     break;
   case EXPRESSION:
     write_expression_assembly(X0, stmt->expression, as_file);
@@ -512,8 +520,8 @@ void check_next_reg(Register reg)
 int count_local_vars(FunctionNode* func)
 {
   int local_vars = 0;
-  for(unsigned int i = 0; i < func->num_statements; i++) {
-    if(func->body[i]->type == DECLARATION) {
+  for(unsigned int i = 0; i < func->body->count; i++) {
+    if(func->body->body[i]->type == DECLARATION_ITEM) {
       local_vars++;
     }
   }
