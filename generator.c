@@ -14,7 +14,7 @@ typedef enum Register_t {
 
 void write_ast_assembly(ProgramNode, FILE*);
 void write_declaration_assembly(DeclarationNode*, FILE*);
-void write_statement_assembly(StatementNode*, FILE*);
+void write_statement_assembly(StatementNode*, FILE*, int);
 void write_expression_assembly(Register, ExpressionNode*, FILE*);
 void check_next_reg(Register);
 int count_local_vars(FunctionNode*);
@@ -63,16 +63,18 @@ void write_ast_assembly(ProgramNode prgm, FILE* as_file)
     }
     fprintf(as_file, "  sub sp, sp, #%i\n", func_stack_offset);
     FunctionNode* main = prgm.main;
+    int ret_tag = tag_counter++;
     for(unsigned int i = 0; i < main->body->count; i++) {
       BlockItem* item = main->body->body[i];
       if(item->type == STATEMENT_ITEM) {
-        write_statement_assembly(item->stmt, as_file);
+        write_statement_assembly(item->stmt, as_file, ret_tag);
       } else {
         write_declaration_assembly(item->decl, as_file);
       }
     }
     fprintf(as_file, "  add sp, sp, #%i\n", func_stack_offset);
-    fputs("  ret\n", as_file);
+    fprintf(as_file, ".L%i:\n", ret_tag);
+    fputs("  ret", as_file);
   }
 }
 
@@ -94,13 +96,14 @@ void write_declaration_assembly(DeclarationNode* decl, FILE* as_file)
   next_offset += 4;
 }
 
-void write_statement_assembly(StatementNode* stmt, FILE* as_file)
+void write_statement_assembly(StatementNode* stmt, FILE* as_file, int ret_tag)
 {
   int tag0;
   int tag1;
   switch(stmt->type) {
   case RETURN_STATEMENT:
     write_expression_assembly(X0, stmt->expression, as_file); 
+    fprintf(as_file, "  b .L%i\n", ret_tag);
     break;
   case CONDITIONAL:
     tag0 = tag_counter++;
@@ -110,13 +113,13 @@ void write_statement_assembly(StatementNode* stmt, FILE* as_file)
     write_expression_assembly(X0, stmt->condition, as_file);
     fprintf(as_file, "  cmp w%i, 0\n", X0);
     fprintf(as_file, "  beq .L%i\n", tag0);
-    write_statement_assembly(stmt->if_stmt, as_file);
+    write_statement_assembly(stmt->if_stmt, as_file, ret_tag);
     if(stmt->else_stmt){
       fprintf(as_file, "  b .L%i\n", tag1);
     }
     fprintf(as_file, ".L%i:\n", tag0);
     if(stmt->else_stmt) {
-      write_statement_assembly(stmt->else_stmt, as_file);
+      write_statement_assembly(stmt->else_stmt, as_file, ret_tag);
       fprintf(as_file, ".L%i:\n", tag1);
     }
   case EXPRESSION:
@@ -522,6 +525,17 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
     fprintf(as_file, "  sub w%i, w%i, #1\n", reg+1, reg);
     fprintf(as_file, "  str w%i, [sp, %lu]\n", reg+1, func_stack_offset - sym.offset);
     break;
+  case COND_EXP:
+    tag0 = tag_counter++;
+    tag1 = tag_counter++;
+    write_expression_assembly(reg, exp->condition, as_file);
+    fprintf(as_file, "  cmp w%i, 0\n", reg);
+    fprintf(as_file, "  beq .L%i\n", tag0);
+    write_expression_assembly(reg, exp->if_exp, as_file);
+    fprintf(as_file, "  b .L%i\n", tag1);
+    fprintf(as_file, ".L%i:\n", tag0);
+    write_expression_assembly(reg, exp->else_exp, as_file);
+    fprintf(as_file, ".L%i:\n", tag1);
   default:
     break;
   }
