@@ -96,10 +96,29 @@ void write_declaration_assembly(DeclarationNode* decl, FILE* as_file)
 
 void write_statement_assembly(StatementNode* stmt, FILE* as_file)
 {
+  int tag0;
+  int tag1;
   switch(stmt->type) {
   case RETURN_STATEMENT:
     write_expression_assembly(X0, stmt->expression, as_file); 
     break;
+  case CONDITIONAL:
+    tag0 = tag_counter++;
+    if(stmt->else_stmt) {
+      tag1 = tag_counter++;
+    }
+    write_expression_assembly(X0, stmt->condition, as_file);
+    fprintf(as_file, "  cmp w%i, 0\n", X0);
+    fprintf(as_file, "  beq .L%i\n", tag0);
+    write_statement_assembly(stmt->if_stmt, as_file);
+    if(stmt->else_stmt){
+      fprintf(as_file, "  b .L%i\n", tag1);
+    }
+    fprintf(as_file, ".L%i:\n", tag0);
+    if(stmt->else_stmt) {
+      write_statement_assembly(stmt->else_stmt, as_file);
+      fprintf(as_file, ".L%i:\n", tag1);
+    }
   case EXPRESSION:
     write_expression_assembly(X0, stmt->expression, as_file);
     break;

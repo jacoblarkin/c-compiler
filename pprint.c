@@ -5,6 +5,7 @@
 
 #include <stdio.h>
 
+void print_statement(StatementNode*);
 void print_expression(ExpressionNode*);
 
 void print_lexemes(TokenList* lexemes)
@@ -37,23 +38,37 @@ void pretty_print(ProgramNode program)
         }
         printf("\n");
       } else {
-        StatementNode* stmt = item->stmt;
-        switch(stmt->type) {
-        case RETURN_STATEMENT:
-          printf("\treturn ");
-          print_expression(stmt->expression);
-          printf("\n");
-          break;
-        case EXPRESSION:
-          printf("\t");
-          print_expression(stmt->expression);
-          printf("\n");
-          break;
-        default:
-          break;
-        }
+        print_statement(item->stmt);
       }
     }
+  }
+}
+
+void print_statement(StatementNode* stmt)
+{
+  switch(stmt->type) {
+  case RETURN_STATEMENT:
+    printf("\treturn ");
+    print_expression(stmt->expression);
+    printf("\n");
+    break;
+  case CONDITIONAL:
+    printf("if ");
+    print_expression(stmt->condition);
+    printf("\n");
+    print_statement(stmt->if_stmt);
+    if(stmt->else_stmt) {
+      printf("else\n");
+      print_statement(stmt->else_stmt);
+    }
+    break;
+  case EXPRESSION:
+    printf("\t");
+    print_expression(stmt->expression);
+    printf("\n");
+    break;
+  default:
+    break;
   }
 }
 
