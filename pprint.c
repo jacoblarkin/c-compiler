@@ -300,6 +300,15 @@ void print_expression(ExpressionNode* exp)
     print_expression(exp->unary_operand);
     printf(")--");
     break;
+  case COND_EXP:
+    printf("if(");
+    print_expression(exp->condition);
+    printf(")then(");
+    print_expression(exp->if_exp);
+    printf(")else(");
+    print_expression(exp->else_exp);
+    printf(")");
+    break;
   default:
     break;
   }
