@@ -27,29 +27,31 @@ void pretty_print(ProgramNode program)
   if(program.main) {
     FunctionNode* main = program.main;
     printf("func main -> %s:\n", (main->type == INT_RET ? "int" : "void"));
-    for(unsigned int i = 0; i < main->num_statements; i++) {
-      StatementNode* stmt = main->body[i];
-      switch(stmt->type) {
-      case RETURN_STATEMENT:
-        printf("\treturn ");
-        print_expression(stmt->return_value);
-        printf("\n");
-        break;
-      case DECLARATION:
-        printf("\t%s: INTEGER", stmt->var_name);
-        if(stmt->assignment_expression) {
+    for(unsigned int i = 0; i < main->body->count; i++) {
+      BlockItem* item = main->body->body[i];
+      if(item->type == DECLARATION_ITEM) {
+        printf("\t%s: INTEGER", item->decl->var_name);
+        if(item->decl->assignment_expression) {
           printf(" = ");
-          print_expression(stmt->assignment_expression);
+          print_expression(item->decl->assignment_expression);
         }
         printf("\n");
-        break;
-      case EXPRESSION:
-        printf("\t");
-        print_expression(stmt->expression);
-        printf("\n");
-        break;
-      default:
-        break;
+      } else {
+        StatementNode* stmt = item->stmt;
+        switch(stmt->type) {
+        case RETURN_STATEMENT:
+          printf("\treturn ");
+          print_expression(stmt->expression);
+          printf("\n");
+          break;
+        case EXPRESSION:
+          printf("\t");
+          print_expression(stmt->expression);
+          printf("\n");
+          break;
+        default:
+          break;
+        }
       }
     }
   }
