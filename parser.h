@@ -59,7 +59,8 @@ typedef enum VarType_e {
 typedef enum StatementType_e {
   RETURN_STATEMENT,
   EXPRESSION,
-  CONDITIONAL
+  CONDITIONAL,
+  BLOCK_STATEMENT
 } StatementType;
 
 typedef enum BlockItemType_e {
@@ -116,6 +117,9 @@ typedef struct DeclarationNode_s {
   ExpressionNode* assignment_expression;
 } DeclarationNode;
 
+// Forward declare blocks to use in statements
+struct BlockNode_s; 
+
 typedef struct StatementNode_s {
   StatementType type;
   union {
@@ -125,6 +129,7 @@ typedef struct StatementNode_s {
       struct StatementNode_s* if_stmt;
       struct StatementNode_s* else_stmt;
     };
+    struct BlockNode_s* block;
   };
 } StatementNode;
 

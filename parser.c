@@ -237,6 +237,10 @@ StatementNode* construct_statement(Token first_tok)
       stmt->else_stmt = construct_statement(next);
     }
     break;
+  case LEFT_BRACE:
+    stmt->type = BLOCK_STATEMENT;
+    stmt->block = construct_block();
+    break;
   default:
     stmt->type = EXPRESSION;
     token_list_push_front(tokens, first_tok);
