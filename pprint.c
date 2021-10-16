@@ -80,6 +80,70 @@ void print_statement(StatementNode* stmt, int n_indent)
       print_statement(stmt->else_stmt, n_indent+1);
     }
     break;
+  case WHILE_LOOP:
+    for(int j = 0; j < n_indent; j++) {
+      printf("\t");
+    }
+    printf("while ");
+    print_expression(stmt->loop_condition);
+    printf("\n");
+    print_statement(stmt->loop_stmt, n_indent+1);
+    break;
+  case DO_LOOP:
+    for(int j = 0; j < n_indent; j++) {
+      printf("\t");
+    }
+    printf("Do\n");
+    print_statement(stmt->loop_stmt, n_indent+1);
+    for(int j = 0; j < n_indent; j++) {
+      printf("\t");
+    }
+    printf("while ");
+    print_expression(stmt->loop_condition);
+    printf("\n");
+    break;
+  case FOR_LOOP:
+    for(int j = 0; j < n_indent; j++) {
+      printf("\t");
+    }
+    printf("for ");
+    print_expression(stmt->init_exp);
+    printf("; ");
+    print_expression(stmt->loop_condition);
+    printf("; ");
+    print_expression(stmt->post_exp);
+    printf(";\n");
+    print_statement(stmt->loop_stmt, n_indent+1);
+    break;
+  case FORDECL_LOOP:
+    for(int j = 0; j < n_indent; j++) {
+      printf("\t");
+    }
+    printf("for ");
+    printf("%s: INTEGER", stmt->init_decl->var_name);
+    if(stmt->init_decl->assignment_expression) {
+      printf(" = ");
+      print_expression(stmt->init_decl->assignment_expression);
+    }
+    printf("; ");
+    print_expression(stmt->loop_condition);
+    printf("; ");
+    print_expression(stmt->post_exp);
+    printf(";\n");
+    print_statement(stmt->loop_stmt, n_indent+1);
+    break;
+  case CONTINUE_STATEMENT:
+    for(int j = 0; j < n_indent; j++) {
+      printf("\t");
+    }
+    printf("continue\n");
+    break;
+  case BREAK_STATEMENT:
+    for(int j = 0; j < n_indent; j++) {
+      printf("\t");
+    }
+    printf("break\n");
+    break;
   case BLOCK_STATEMENT:
     print_block(stmt->block, n_indent+1);
     break;
@@ -331,6 +395,9 @@ void print_expression(ExpressionNode* exp)
     printf(")else(");
     print_expression(exp->else_exp);
     printf(")");
+    break;
+  case EMPTY_EXP:
+    printf("NO-OP");
     break;
   default:
     break;
