@@ -5,7 +5,8 @@
 
 #include <stdio.h>
 
-void print_statement(StatementNode*);
+void print_block(BlockNode*, int);
+void print_statement(StatementNode*, int);
 void print_expression(ExpressionNode*);
 
 void print_lexemes(TokenList* lexemes)
@@ -28,42 +29,64 @@ void pretty_print(ProgramNode program)
   if(program.main) {
     FunctionNode* main = program.main;
     printf("func main -> %s:\n", (main->type == INT_RET ? "int" : "void"));
-    for(unsigned int i = 0; i < main->body->count; i++) {
-      BlockItem* item = main->body->body[i];
-      if(item->type == DECLARATION_ITEM) {
-        printf("\t%s: INTEGER", item->decl->var_name);
-        if(item->decl->assignment_expression) {
-          printf(" = ");
-          print_expression(item->decl->assignment_expression);
-        }
-        printf("\n");
-      } else {
-        print_statement(item->stmt);
+    print_block(main->body, 1);
+  }
+}
+
+void print_block(BlockNode* block, int n_indent)
+{
+  for(unsigned int i = 0; i < block->count; i++) {
+    BlockItem* item = block->body[i];
+    if(item->type == DECLARATION_ITEM) {
+      for(int j = 0; j < n_indent; j++) {
+        printf("\t");
       }
+      printf("%s: INTEGER", item->decl->var_name);
+      if(item->decl->assignment_expression) {
+        printf(" = ");
+        print_expression(item->decl->assignment_expression);
+      }
+      printf("\n");
+    } else {
+      print_statement(item->stmt, n_indent);
     }
   }
 }
 
-void print_statement(StatementNode* stmt)
+void print_statement(StatementNode* stmt, int n_indent)
 {
   switch(stmt->type) {
   case RETURN_STATEMENT:
-    printf("\treturn ");
+    for(int j = 0; j < n_indent; j++) {
+      printf("\t");
+    }
+    printf("return ");
     print_expression(stmt->expression);
     printf("\n");
     break;
   case CONDITIONAL:
+    for(int j = 0; j < n_indent; j++) {
+      printf("\t");
+    }
     printf("if ");
     print_expression(stmt->condition);
     printf("\n");
-    print_statement(stmt->if_stmt);
+    print_statement(stmt->if_stmt, n_indent+1);
     if(stmt->else_stmt) {
+      for(int j = 0; j < n_indent; j++) {
+        printf("\t");
+      }
       printf("else\n");
-      print_statement(stmt->else_stmt);
+      print_statement(stmt->else_stmt, n_indent+1);
     }
     break;
+  case BLOCK_STATEMENT:
+    print_block(stmt->block, n_indent+1);
+    break;
   case EXPRESSION:
-    printf("\t");
+    for(int j = 0; j < n_indent; j++) {
+      printf("\t");
+    }
     print_expression(stmt->expression);
     printf("\n");
     break;
