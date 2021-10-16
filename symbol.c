@@ -2,7 +2,7 @@
 
 #include <string.h>
 
-SymbolTable global_symbol_table = {.top = NULL};
+SymbolTable global_symbol_table = {.top = NULL, .next = NULL};
 
 void push_symbol(Symbol s, SymbolTable* st)
 {
@@ -32,12 +32,15 @@ Symbol find_symbol(char* name, SymbolTable* st)
   if(!st) {
     st = &global_symbol_table;
   }
+  if(!name) {
+    return (Symbol){.name = NULL, .offset = 0};
+  }
   SymbolTableNode* curr = st->top;
   while(curr->next) {
     // Not sure why this would ever happen.
     // Most likely an error if it does, so this should
     // probably cause an exit.
-    if(!curr->symbol.name) {
+    if(!(curr->symbol.name)) {
         curr = curr->next;
         continue;
     }
@@ -48,4 +51,18 @@ Symbol find_symbol(char* name, SymbolTable* st)
   }
   Symbol s = {.name = NULL, .offset = 0};
   return s;
+}
+
+void delete_symbol_table(SymbolTable* st)
+{
+  if(!st) {
+    return ;
+  }
+  SymbolTableNode* curr = st->top;
+  while(curr) {
+    SymbolTableNode* next = curr->next;
+    free(curr);
+    curr = next;
+  }
+  free(st);
 }

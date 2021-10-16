@@ -12,6 +12,8 @@ typedef enum State_t {
 
 void print_error(const char*);
 FunctionNode* construct_function(CType);
+BlockNode* construct_block();
+DeclarationNode* construct_declaration(Token);
 StatementNode* construct_statement(Token);
 ExpressionNode* construct_expression(void);
 ExpressionNode* parse_primary_expression(void);
@@ -25,6 +27,7 @@ ExpressionNode* parse_var(Token);
 int operator_precedence(Token);
 int right_assoc_operator(Token);
 int find_right_paren(void);
+void handle_ternary(void);
 
 TokenList* tokens;
 
@@ -89,8 +92,6 @@ FunctionNode* construct_function(CType fn_type)
   default:
     print_error("Can only have funcs that return int.");
   }
-  func->body = NULL;
-  func->num_statements = 0;
   int left_paren = 0;
   int right_paren = 0;
   Token plist = token_list_pop_front(tokens);
@@ -111,37 +112,96 @@ FunctionNode* construct_function(CType fn_type)
   if (left_paren != 1 || right_paren != 1) {
     print_error("Ill formed function declaration. Check parenthesis.");
   }
-  func->capacity = 1;
-  func->body = calloc(1, sizeof(StatementNode*));
-  Token st_begin = token_list_pop_front(tokens);
   int returned = 0;
-  while(st_begin.type != RIGHT_BRACE) {
-    if(func->num_statements == func->capacity) {
-      func->capacity *= 2;
-      func->body = realloc(func->body,
-                           sizeof(StatementNode*) * func->capacity);
-    }
-    if(st_begin.type == RETURN_TOK) {
-      returned = 1;
-    }
-    func->body[func->num_statements++] = construct_statement(st_begin);
-    st_begin = token_list_pop_front(tokens);
+  func->body = construct_block();
+  BlockItem* last_item = func->body->body[func->body->count - 1];
+  if(last_item && last_item->type == STATEMENT_ITEM 
+      && last_item->stmt->type == RETURN_STATEMENT) {
+    returned = 1;
   }
   if(!returned) {
+    BlockItem* blck_item = malloc(sizeof(BlockItem));
     StatementNode* stmt = malloc(sizeof(StatementNode));
     ExpressionNode* zero = malloc(sizeof(ExpressionNode));
+    blck_item->type = STATEMENT_ITEM;
     stmt->type = RETURN_STATEMENT;
     zero->type = INT_VALUE;
     zero->int_value = 0;
-    stmt->return_value = zero;
-    if(func->num_statements == func->capacity) {
-      func->capacity++;
-      func->body = realloc(func->body,
-                           sizeof(StatementNode*) * func->capacity);
+    stmt->expression = zero;
+    blck_item->stmt = stmt;
+    if(func->body->count == func->body->capacity) {
+      func->body->capacity++;
+      func->body->body = realloc(func->body->body,
+                           sizeof(BlockItem*) * func->body->capacity);
     }
-    func->body[func->num_statements++] = stmt;
+    func->body->body[func->body->count++] = blck_item;
   }
   return func;
+}
+
+BlockNode* construct_block()
+{
+  BlockNode* blck = malloc(sizeof(BlockNode));
+  if(!blck) {
+    perror("Error");
+    exit(1);
+  }
+  blck->count = 0;
+  blck->capacity = 1;
+  blck->body = calloc(1, sizeof(BlockItem*));
+  Token st_begin = token_list_pop_front(tokens);
+  while(st_begin.type != RIGHT_BRACE) {
+    if(blck->count == blck->capacity) {
+      blck->capacity *= 2;
+      blck->body = realloc(blck->body,
+                           sizeof(BlockItem*) * blck->capacity);
+    }
+    BlockItem* item = malloc(sizeof(BlockItem));
+    switch (st_begin.type) {
+    case INT_TOK:
+      item->decl = construct_declaration(st_begin);
+      item->type = DECLARATION_ITEM;
+      break;
+    default:
+      item->stmt = construct_statement(st_begin);
+      item->type = STATEMENT_ITEM;
+      break;
+    }
+    blck->body[blck->count++] = item;
+    st_begin = token_list_pop_front(tokens);
+  }
+  return blck;
+}
+
+DeclarationNode* construct_declaration(Token first_tok)
+{
+  DeclarationNode* decl = malloc(sizeof(DeclarationNode));
+  if(!decl) {
+    perror("Error");
+    exit(1);
+  } 
+  if(first_tok.type == INT_TOK) {
+    decl->var_type = INT_VAR;
+  } else {
+    print_error("Unrecognize var type.");
+  }
+  Token name = token_list_peek_front(tokens);
+  if(name.type != IDENTIFIER) {
+    print_error("Expected identifier to declar var.");
+  }
+  decl->var_name = name.value;
+  decl->assignment_expression = NULL;
+  Token assign = token_list_peek_n(tokens, 1);
+  if(assign.type == ASSIGN) {
+    decl->assignment_expression = construct_expression();
+  } else {
+    token_list_pop_front(tokens);
+  }
+  Token semicolon = token_list_pop_front(tokens);
+  if (semicolon.type != SEMICOLON) {
+    print_error("Invalid statement.");
+  }
+  return decl;
 }
 
 StatementNode* construct_statement(Token first_tok)
@@ -151,36 +211,45 @@ StatementNode* construct_statement(Token first_tok)
     perror("Error");
     exit(1);
   }
+  Token semicolon;
   switch(first_tok.type) {
   case RETURN_TOK:
     stmt->type = RETURN_STATEMENT;
-    stmt->return_value = construct_expression();
+    stmt->expression = construct_expression();
+    semicolon = token_list_pop_front(tokens);
+    if (semicolon.type != SEMICOLON) {
+      print_error("Invalid statement.");
+    }
     break;
-  case INT_TOK:
-    stmt->type = DECLARATION;
-    stmt->var_type = INT_VAR;
-    Token name = token_list_peek_front(tokens);
-    if(name.type != IDENTIFIER) {
-      print_error("Expected identifier to declar var.");
+  case IF_TOK:
+    stmt->type = CONDITIONAL;
+    if(token_list_peek_front(tokens).type != LEFT_PAREN) {
+      print_error("Invalid if statement.");
     }
-    stmt->var_name = name.value;
-    stmt->assignment_expression = NULL;
-    Token assign = token_list_peek_n(tokens, 1);
-    if(assign.type == ASSIGN) {
-      stmt->assignment_expression = construct_expression();
-    } else {
-      token_list_pop_front(tokens);
+    stmt->condition = parse_primary_expression();
+    Token next = token_list_pop_front(tokens);
+    stmt->if_stmt = construct_statement(next);
+    stmt->else_stmt = NULL;
+    next = token_list_peek_front(tokens);
+    if(next.type == ELSE_TOK) {
+      token_list_pop_front(tokens); // else
+      next = token_list_pop_front(tokens);
+      stmt->else_stmt = construct_statement(next);
     }
+    break;
+  case LEFT_BRACE:
+    stmt->type = BLOCK_STATEMENT;
+    stmt->block = construct_block();
     break;
   default:
     stmt->type = EXPRESSION;
     token_list_push_front(tokens, first_tok);
     stmt->expression = construct_expression();
+    semicolon = token_list_pop_front(tokens);
+    if (semicolon.type != SEMICOLON) {
+      print_error("Invalid statement.");
+    }
     break;
-  }
-  Token semicolon = token_list_pop_front(tokens);
-  if (semicolon.type != SEMICOLON) {
-    print_error("Invalid statement.");
   }
   return stmt;
 }
@@ -189,9 +258,9 @@ ExpressionNode* construct_expression()
 {
   Token first = token_list_peek_front(tokens);
   if(first.type == SEMICOLON) {
-    print_error("Invalid expression");
+    print_error("Invalid expression. Empty.");
   }
-  ExpressionNode* exp;
+  ExpressionNode* exp = NULL;
   switch(first.type) {
   case INT_LITERAL:
   case HEX_LITERAL:
@@ -295,7 +364,7 @@ ExpressionNode* parse_primary_expression()
     return parse_var(tok);
   case BRACE_ST:
     if (type != LEFT_PAREN) {
-      print_error("Invalid Expression.");
+      print_error("Invalid Expression. Expected (.");
     }
     if(!find_right_paren()) {
       print_error("Missing parenthesis");
@@ -336,6 +405,9 @@ ExpressionNode* parse_operators()
 ExpressionNode* parse_operators_impl(ExpressionNode* lhs, int min_precedence)
 {
   Token lookahead = token_list_peek_front(tokens);
+  if(lookahead.type == QMARK) {
+    handle_ternary();
+  }
   while(operator_precedence(lookahead) >= min_precedence) {
     Token op = token_list_pop_front(tokens);
     ExpressionNode* rhs = parse_primary_expression();
@@ -353,6 +425,45 @@ ExpressionNode* parse_operators_impl(ExpressionNode* lhs, int min_precedence)
     lhs = construct_binary_expression(op, lhs, rhs);
   }
   return lhs;
+}
+
+void handle_ternary()
+{
+  TokenListNode* curr = tokens->first;
+  Token left = {.type = LEFT_PAREN, .value = NULL};
+  Token right = {.type = RIGHT_PAREN, .value = NULL};
+  TokenList mock;
+  mock.first = tokens->first->next;
+  mock.last = tokens->first->next;
+  token_list_push_front(&mock, left);
+  mock.first->prev = curr;
+  curr->next = mock.first;
+  int numQ = 1;
+  int numC = 0;
+  while(numQ > numC) {
+    switch(mock.last->tok.type) {
+    case QMARK:
+      numQ++;
+      break;
+    case COLON:
+      numC++;
+      break;
+    case SEMICOLON:
+      print_error("Incomplete ternary operator expression.");
+      break;
+    default:
+      break;
+    }
+    if(!mock.last->next) {
+      print_error("Incomplete ternary operator expression.");
+    }
+    mock.last = mock.last->next;
+  }
+  curr = mock.last->prev;
+  mock.last = mock.last->prev->prev;
+  token_list_push(&mock, right);
+  curr->prev = mock.last;
+  mock.last->next = curr;
 }
 
 int right_assoc_operator(Token op)
@@ -376,6 +487,19 @@ ExpressionNode* construct_binary_expression(Token op, ExpressionNode* lhs,
   binary_exp->type = token_structs[op.type].binary_type;
   if(binary_exp->type == UNKNOWN_EXP) {
     print_error("Unknown binary expression.");
+  }
+  if(binary_exp->type == COND_EXP && op.type == QMARK) {
+    binary_exp->condition = lhs;
+    binary_exp->if_exp = rhs;
+    binary_exp->else_exp = NULL;
+    return binary_exp;
+  } else if(binary_exp->type == COND_EXP && op.type == COLON) {
+    free(binary_exp);
+    if(lhs->type != COND_EXP || lhs->else_exp) {
+      print_error("Invalid conditional expression.");
+    }
+    lhs->else_exp = rhs;
+    return lhs;
   }
   if(token_structs[op.type].need_lvalue 
       && lhs->type != VAR_EXP) {

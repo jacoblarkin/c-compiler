@@ -5,6 +5,8 @@
 
 #include <stdio.h>
 
+void print_block(BlockNode*, int);
+void print_statement(StatementNode*, int);
 void print_expression(ExpressionNode*);
 
 void print_lexemes(TokenList* lexemes)
@@ -27,31 +29,69 @@ void pretty_print(ProgramNode program)
   if(program.main) {
     FunctionNode* main = program.main;
     printf("func main -> %s:\n", (main->type == INT_RET ? "int" : "void"));
-    for(unsigned int i = 0; i < main->num_statements; i++) {
-      StatementNode* stmt = main->body[i];
-      switch(stmt->type) {
-      case RETURN_STATEMENT:
-        printf("\treturn ");
-        print_expression(stmt->return_value);
-        printf("\n");
-        break;
-      case DECLARATION:
-        printf("\t%s: INTEGER", stmt->var_name);
-        if(stmt->assignment_expression) {
-          printf(" = ");
-          print_expression(stmt->assignment_expression);
-        }
-        printf("\n");
-        break;
-      case EXPRESSION:
+    print_block(main->body, 1);
+  }
+}
+
+void print_block(BlockNode* block, int n_indent)
+{
+  for(unsigned int i = 0; i < block->count; i++) {
+    BlockItem* item = block->body[i];
+    if(item->type == DECLARATION_ITEM) {
+      for(int j = 0; j < n_indent; j++) {
         printf("\t");
-        print_expression(stmt->expression);
-        printf("\n");
-        break;
-      default:
-        break;
       }
+      printf("%s: INTEGER", item->decl->var_name);
+      if(item->decl->assignment_expression) {
+        printf(" = ");
+        print_expression(item->decl->assignment_expression);
+      }
+      printf("\n");
+    } else {
+      print_statement(item->stmt, n_indent);
     }
+  }
+}
+
+void print_statement(StatementNode* stmt, int n_indent)
+{
+  switch(stmt->type) {
+  case RETURN_STATEMENT:
+    for(int j = 0; j < n_indent; j++) {
+      printf("\t");
+    }
+    printf("return ");
+    print_expression(stmt->expression);
+    printf("\n");
+    break;
+  case CONDITIONAL:
+    for(int j = 0; j < n_indent; j++) {
+      printf("\t");
+    }
+    printf("if ");
+    print_expression(stmt->condition);
+    printf("\n");
+    print_statement(stmt->if_stmt, n_indent+1);
+    if(stmt->else_stmt) {
+      for(int j = 0; j < n_indent; j++) {
+        printf("\t");
+      }
+      printf("else\n");
+      print_statement(stmt->else_stmt, n_indent+1);
+    }
+    break;
+  case BLOCK_STATEMENT:
+    print_block(stmt->block, n_indent+1);
+    break;
+  case EXPRESSION:
+    for(int j = 0; j < n_indent; j++) {
+      printf("\t");
+    }
+    print_expression(stmt->expression);
+    printf("\n");
+    break;
+  default:
+    break;
   }
 }
 
@@ -282,6 +322,15 @@ void print_expression(ExpressionNode* exp)
     printf("(");
     print_expression(exp->unary_operand);
     printf(")--");
+    break;
+  case COND_EXP:
+    printf("if(");
+    print_expression(exp->condition);
+    printf(")then(");
+    print_expression(exp->if_exp);
+    printf(")else(");
+    print_expression(exp->else_exp);
+    printf(")");
     break;
   default:
     break;

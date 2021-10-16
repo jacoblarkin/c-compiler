@@ -18,6 +18,7 @@ typedef struct SymbolTableNode_s {
 
 typedef struct SymbolTable_s {
   SymbolTableNode* top;
+  struct SymbolTable_s* next;
 } SymbolTable;
 
 extern SymbolTable global_symbol_table;
@@ -25,5 +26,6 @@ extern SymbolTable global_symbol_table;
 void push_symbol(Symbol, SymbolTable*);
 void push_constructed_symbol(char*, size_t, SymbolTable*);
 Symbol find_symbol(char*, SymbolTable*);
+void delete_symbol_table(SymbolTable*);
 
 #endif
