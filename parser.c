@@ -212,6 +212,7 @@ StatementNode* construct_statement(Token first_tok)
     exit(1);
   }
   Token semicolon;
+  Token next;
   switch(first_tok.type) {
   case RETURN_TOK:
     stmt->type = RETURN_STATEMENT;
@@ -227,7 +228,7 @@ StatementNode* construct_statement(Token first_tok)
       print_error("Invalid if statement.");
     }
     stmt->condition = parse_primary_expression();
-    Token next = token_list_pop_front(tokens);
+    next = token_list_pop_front(tokens);
     stmt->if_stmt = construct_statement(next);
     stmt->else_stmt = NULL;
     next = token_list_peek_front(tokens);
@@ -235,6 +236,78 @@ StatementNode* construct_statement(Token first_tok)
       token_list_pop_front(tokens); // else
       next = token_list_pop_front(tokens);
       stmt->else_stmt = construct_statement(next);
+    }
+    break;
+  case WHILE_TOK:
+    stmt->type = WHILE_LOOP;
+    if(token_list_peek_front(tokens).type != LEFT_PAREN) {
+      print_error("Invalid while statement.");
+    }
+    stmt->loop_condition = parse_primary_expression();
+    next = token_list_pop_front(tokens);
+    stmt->loop_stmt = construct_statement(next);
+    break;
+  case DO_TOK:
+    stmt->type = DO_LOOP;
+    next = token_list_pop_front(tokens);
+    stmt->loop_stmt = construct_statement(next);
+    next = token_list_pop_front(tokens);
+    if(next.type != WHILE_TOK) {
+      print_error("Invalid do statement.");
+    }
+    if(token_list_peek_front(tokens).type != LEFT_PAREN) {
+      print_error("Invalid while statement.");
+    }
+    stmt->loop_condition = parse_primary_expression();
+    break;
+  case FOR_TOK:
+    next = token_list_pop_front(tokens);
+    if(next.type != LEFT_PAREN) {
+      print_error("Invalid for statement. Missing left paren.");
+    }
+    next = token_list_pop_front(tokens);
+    if(next.type == INT_TOK) {
+      stmt->type = FORDECL_LOOP;
+      stmt->init_decl = construct_declaration(next);
+    } else {
+      stmt->type = FOR_LOOP;
+      token_list_push_front(tokens, next);
+      stmt->init_exp = construct_expression();
+      next = token_list_pop_front(tokens);
+      if(next.type != SEMICOLON) {
+        print_error("Invalid for statement. Missing first ;.");
+      }
+    }
+    stmt->loop_condition = construct_expression();
+    next = token_list_pop_front(tokens);
+    if(next.type != SEMICOLON) {
+      print_error("Invalid for statement. Missing second ;.");
+    }
+    if(token_list_peek_front(tokens).type == RIGHT_PAREN) {
+      stmt->post_exp = malloc(sizeof(ExpressionNode));
+      stmt->post_exp->type = EMPTY_EXP;
+    } else {
+      stmt->post_exp = construct_expression();
+    }
+    next = token_list_pop_front(tokens);
+    if(next.type != RIGHT_PAREN) {
+      print_error("Invalid for statement. Missing right paren.");
+    }
+    next = token_list_pop_front(tokens);
+    stmt->loop_stmt = construct_statement(next);
+    break;
+  case BREAK_TOK:
+    stmt->type = BREAK_STATEMENT;
+    semicolon = token_list_pop_front(tokens);
+    if (semicolon.type != SEMICOLON) {
+      print_error("Break statement missing ;.");
+    }
+    break;
+  case CONTINUE_TOK:
+    stmt->type = CONTINUE_STATEMENT;
+    semicolon = token_list_pop_front(tokens);
+    if (semicolon.type != SEMICOLON) {
+      print_error("Continue statement missin ;.");
     }
     break;
   case LEFT_BRACE:
@@ -257,9 +330,6 @@ StatementNode* construct_statement(Token first_tok)
 ExpressionNode* construct_expression()
 {
   Token first = token_list_peek_front(tokens);
-  if(first.type == SEMICOLON) {
-    print_error("Invalid expression. Empty.");
-  }
   ExpressionNode* exp = NULL;
   switch(first.type) {
   case INT_LITERAL:
@@ -271,6 +341,10 @@ ExpressionNode* construct_expression()
   case LEFT_PAREN:
   case IDENTIFIER:
     exp = parse_operators();
+    break;
+  case SEMICOLON:
+    exp = malloc(sizeof(ExpressionNode));
+    exp->type = EMPTY_EXP;
     break;
   default:
     print_error("Can only handle some expressions right now.");
