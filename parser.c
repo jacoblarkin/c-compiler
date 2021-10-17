@@ -321,6 +321,25 @@ StatementNode* construct_statement(Token first_tok)
     stmt->type = BLOCK_STATEMENT;
     stmt->block = construct_block();
     break;
+  case GOTO_TOK:
+    stmt->type = GOTO_STATEMENT;
+    next = token_list_pop_front(tokens);
+    if(next.type != IDENTIFIER) {
+      print_error("Expected label for goto.");
+    }
+    stmt->label_name = next.value;
+    semicolon = token_list_pop_front(tokens);
+    if (semicolon.type != SEMICOLON) {
+      print_error("Goto statement missing ;.");
+    }
+    break;
+  case IDENTIFIER:
+    if(token_list_peek_front(tokens).type == COLON) {
+      stmt->type = LABEL;
+      stmt->label_name = first_tok.value;
+      token_list_pop_front(tokens);
+    }
+    // Intentional fallthrough to handle else case
   default:
     stmt->type = EXPRESSION;
     token_list_push_front(tokens, first_tok);

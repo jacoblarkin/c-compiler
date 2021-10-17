@@ -67,7 +67,9 @@ typedef enum StatementType_e {
   DO_LOOP,
   BREAK_STATEMENT,
   CONTINUE_STATEMENT,
-  BLOCK_STATEMENT
+  BLOCK_STATEMENT,
+  GOTO_STATEMENT,
+  LABEL
 } StatementType;
 
 typedef enum BlockItemType_e {
@@ -146,6 +148,7 @@ typedef struct StatementNode_s {
       struct StatementNode_s* loop_stmt;
     };
     struct BlockNode_s* block;
+    char* label_name;
   };
 } StatementNode;
 
