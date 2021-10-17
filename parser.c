@@ -217,6 +217,9 @@ StatementNode* construct_statement(Token first_tok)
   case RETURN_TOK:
     stmt->type = RETURN_STATEMENT;
     stmt->expression = construct_expression();
+    if(stmt->expression->type == EMPTY_EXP) {
+      print_error("Must have return value right now.");
+    }
     semicolon = token_list_pop_front(tokens);
     if (semicolon.type != SEMICOLON) {
       print_error("Invalid statement.");
