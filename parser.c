@@ -259,6 +259,10 @@ StatementNode* construct_statement(Token first_tok)
       print_error("Invalid while statement.");
     }
     stmt->loop_condition = parse_primary_expression();
+    next = token_list_pop_front(tokens);
+    if(next.type != SEMICOLON) {
+      print_error("Invalid while statement. Missing ; at end.");
+    }
     break;
   case FOR_TOK:
     next = token_list_pop_front(tokens);
