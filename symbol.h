@@ -26,6 +26,7 @@ extern SymbolTable global_symbol_table;
 void push_symbol(Symbol, SymbolTable*);
 void push_constructed_symbol(char*, size_t, SymbolTable*);
 Symbol find_symbol(char*, SymbolTable*);
+void remove_symbol(char*, SymbolTable*);
 void delete_symbol_table(SymbolTable*);
 
 #endif
