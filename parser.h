@@ -46,7 +46,8 @@ typedef enum ExpressionType_t {
   POSTINC_EXP,
   PREDEC_EXP,
   POSTDEC_EXP,
-  COND_EXP
+  COND_EXP,
+  EMPTY_EXP
 } ExpressionType;
 
 typedef enum VarType_e {
@@ -60,6 +61,12 @@ typedef enum StatementType_e {
   RETURN_STATEMENT,
   EXPRESSION,
   CONDITIONAL,
+  FOR_LOOP,
+  FORDECL_LOOP,
+  WHILE_LOOP,
+  DO_LOOP,
+  BREAK_STATEMENT,
+  CONTINUE_STATEMENT,
   BLOCK_STATEMENT
 } StatementType;
 
@@ -124,10 +131,19 @@ typedef struct StatementNode_s {
   StatementType type;
   union {
     ExpressionNode* expression;
-    struct {
+    struct { // Ifs
       ExpressionNode* condition;
       struct StatementNode_s* if_stmt;
       struct StatementNode_s* else_stmt;
+    };
+    struct { // Loops
+      union {
+        DeclarationNode* init_decl;
+        ExpressionNode* init_exp;
+      };
+      ExpressionNode* loop_condition;
+      ExpressionNode* post_exp;
+      struct StatementNode_s* loop_stmt;
     };
     struct BlockNode_s* block;
   };

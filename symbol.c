@@ -53,6 +53,34 @@ Symbol find_symbol(char* name, SymbolTable* st)
   return s;
 }
 
+void remove_symbol(char* name, SymbolTable* st)
+{
+  if(!st) {
+    st = &global_symbol_table;
+  }
+  if(!name) {
+    return ;
+  }
+  SymbolTableNode* curr = st->top;
+  SymbolTableNode* prev = st->top;
+  while(curr->next) {
+    // Not sure why this would ever happen.
+    // Most likely an error if it does, so this should
+    // probably cause an exit.
+    if(!(curr->symbol.name)) {
+        prev = curr;
+        curr = curr->next;
+        continue;
+    }
+    if(!strcmp(name, curr->symbol.name)) {
+        prev->next = curr->next;
+        free(curr);
+    }
+    prev = curr;
+    curr = curr->next;
+  }
+}
+
 void delete_symbol_table(SymbolTable* st)
 {
   if(!st) {

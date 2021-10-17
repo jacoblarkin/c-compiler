@@ -19,7 +19,7 @@ void write_declaration_assembly(DeclarationNode*, FILE*);
 void write_statement_assembly(StatementNode*, FILE*, int);
 void write_expression_assembly(Register, ExpressionNode*, FILE*);
 void check_next_reg(Register);
-int count_local_vars(FunctionNode*);
+int count_local_vars(BlockNode*);
 size_t get_symbol_offset(char*, FILE*);
 
 int tag_counter = 0;
@@ -57,7 +57,7 @@ void write_ast_assembly(ProgramNode prgm, FILE* as_file)
 {
   if(prgm.main) {
     fputs("_main:\n", as_file);
-    func_stack_offset = 4*count_local_vars(prgm.main);
+    func_stack_offset = 4*count_local_vars(prgm.main->body);
     if(func_stack_offset % 16) {
       func_stack_offset += (16 - func_stack_offset % 16);
     }
@@ -65,8 +65,8 @@ void write_ast_assembly(ProgramNode prgm, FILE* as_file)
     int ret_tag = tag_counter++;
     top_st = NULL;
     write_block_assembly(prgm.main->body, as_file, ret_tag);
-    fprintf(as_file, "  add sp, sp, #%i\n", func_stack_offset);
     fprintf(as_file, ".L%i:\n", ret_tag);
+    fprintf(as_file, "  add sp, sp, #%i\n", func_stack_offset);
     fputs("  ret\n", as_file);
   }
 }
@@ -111,8 +111,13 @@ void write_declaration_assembly(DeclarationNode* decl, FILE* as_file)
 
 void write_statement_assembly(StatementNode* stmt, FILE* as_file, int ret_tag)
 {
+  static int current_continue_tag = -1;
+  static int current_break_tag = -1;
+  int last_continue_tag; 
+  int last_break_tag; 
   int tag0;
   int tag1;
+  int tag2;
   switch(stmt->type) {
   case RETURN_STATEMENT:
     write_expression_assembly(X0, stmt->expression, as_file); 
@@ -135,6 +140,112 @@ void write_statement_assembly(StatementNode* stmt, FILE* as_file, int ret_tag)
       write_statement_assembly(stmt->else_stmt, as_file, ret_tag);
       fprintf(as_file, ".L%i:\n", tag1);
     }
+    break;
+  case WHILE_LOOP:
+    tag0 = tag_counter++;
+    tag1 = tag_counter++;
+    last_continue_tag = current_continue_tag;
+    last_break_tag = current_break_tag;
+    current_continue_tag = tag0;
+    current_break_tag = tag1;
+    write_expression_assembly(X0, stmt->loop_condition, as_file);
+    fprintf(as_file, "  cmp w%i, 0\n", X0);
+    fprintf(as_file, "  beq .L%i\n", tag1);
+    fprintf(as_file, ".L%i:\n", tag0);
+    write_statement_assembly(stmt->loop_stmt, as_file, ret_tag);
+    write_expression_assembly(X0, stmt->loop_condition, as_file);
+    fprintf(as_file, "  cmp w%i, 0\n", X0);
+    fprintf(as_file, "  bne .L%i\n", tag0);
+    fprintf(as_file, ".L%i:\n", tag1);
+    current_continue_tag = last_continue_tag;
+    current_break_tag = last_break_tag;
+    break;
+  case DO_LOOP:
+    tag0 = tag_counter++;
+    tag1 = tag_counter++;
+    last_continue_tag = current_continue_tag;
+    last_break_tag = current_break_tag;
+    current_continue_tag = tag0;
+    current_break_tag = tag1;
+    fprintf(as_file, ".L%i:\n", tag0);
+    write_statement_assembly(stmt->loop_stmt, as_file, ret_tag);
+    write_expression_assembly(X0, stmt->loop_condition, as_file);
+    fprintf(as_file, "  cmp w%i, 0\n", X0);
+    fprintf(as_file, "  bne .L%i\n", tag0);
+    fprintf(as_file, ".L%i:\n", tag1);
+    current_continue_tag = last_continue_tag;
+    current_break_tag = last_break_tag;
+    break;
+  case FOR_LOOP:
+    tag0 = tag_counter++;
+    tag1 = tag_counter++;
+    tag2 = tag_counter++;
+    last_continue_tag = current_continue_tag;
+    last_break_tag = current_break_tag;
+    current_continue_tag = tag2;
+    current_break_tag = tag1;
+    write_expression_assembly(X0, stmt->init_exp, as_file);
+    fprintf(as_file, ".L%i:\n", tag0);
+    if(stmt->loop_condition->type != EMPTY_EXP) {
+      write_expression_assembly(X0, stmt->loop_condition, as_file);
+      fprintf(as_file, "  cmp w%i, 0\n", X0);
+      fprintf(as_file, "  beq .L%i\n", tag1);
+    }
+    write_statement_assembly(stmt->loop_stmt, as_file, ret_tag);
+    fprintf(as_file, ".L%i:\n", tag2);
+    write_expression_assembly(X0, stmt->post_exp, as_file);
+    fprintf(as_file, "  b .L%i\n", tag0);
+    fprintf(as_file, ".L%i:\n", tag1);
+    current_continue_tag = last_continue_tag;
+    current_break_tag = last_break_tag;
+    break;
+  case FORDECL_LOOP:
+    tag0 = tag_counter++;
+    tag1 = tag_counter++;
+    tag2 = tag_counter++;
+    last_continue_tag = current_continue_tag;
+    last_break_tag = current_break_tag;
+    current_continue_tag = tag2;
+    current_break_tag = tag1;
+    SymbolTable* for_st = malloc(sizeof(SymbolTable));
+    for_st->top = NULL;
+    for_st->next = top_st;
+    top_st = for_st;
+    push_constructed_symbol(NULL, 0, for_st);
+    write_declaration_assembly(stmt->init_decl, as_file);
+    fprintf(as_file, ".L%i:\n", tag0);
+    if(stmt->loop_condition->type != EMPTY_EXP) {
+      write_expression_assembly(X0, stmt->loop_condition, as_file);
+      fprintf(as_file, "  cmp w%i, 0\n", X0);
+      fprintf(as_file, "  beq .L%i\n", tag1);
+    }
+    write_statement_assembly(stmt->loop_stmt, as_file, ret_tag);
+    fprintf(as_file, ".L%i:\n", tag2);
+    write_expression_assembly(X0, stmt->post_exp, as_file);
+    fprintf(as_file, "  b .L%i\n", tag0);
+    fprintf(as_file, ".L%i:\n", tag1);
+    top_st = for_st->next;
+    delete_symbol_table(for_st);
+    current_continue_tag = last_continue_tag;
+    current_break_tag = last_break_tag;
+    break;
+  case CONTINUE_STATEMENT:
+    if(current_continue_tag < 0) {
+      puts("Error: continue not in loop.");
+      fclose(as_file);
+      remove(assembly_filename);
+      exit(1);  
+    }
+    fprintf(as_file, "  b .L%i\n", current_continue_tag);
+    break;
+  case BREAK_STATEMENT:
+    if(current_break_tag < 0) {
+      puts("Error: break not in loop.");
+      fclose(as_file);
+      remove(assembly_filename);
+      exit(1);
+    }
+    fprintf(as_file, "  b .L%i\n", current_break_tag);
     break;
   case BLOCK_STATEMENT:
     write_block_assembly(stmt->block, as_file, ret_tag);
@@ -455,6 +566,9 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
     fprintf(as_file, ".L%i:\n", tag0);
     write_expression_assembly(reg, exp->else_exp, as_file);
     fprintf(as_file, ".L%i:\n", tag1);
+    break;
+  case EMPTY_EXP:
+    break;
   default:
     break;
   }
@@ -469,12 +583,39 @@ void check_next_reg(Register reg)
   }
 }
 
-int count_local_vars(FunctionNode* func)
+int count_local_vars(BlockNode* block)
 {
   int local_vars = 0;
-  for(unsigned int i = 0; i < func->body->count; i++) {
-    if(func->body->body[i]->type == DECLARATION_ITEM) {
+  for(unsigned int i = 0; i < block->count; i++) {
+    if(block->body[i]->type == DECLARATION_ITEM) {
       local_vars++;
+    } else {
+      switch(block->body[i]->stmt->type) {
+      case FORDECL_LOOP:
+        local_vars++;
+        if (block->body[i]->stmt->loop_stmt->type == BLOCK_STATEMENT) {
+          local_vars += count_local_vars(block->body[i]->stmt->loop_stmt->block);
+        }
+        break;
+      case WHILE_LOOP:
+      case DO_LOOP:
+      case FOR_LOOP:
+        if (block->body[i]->stmt->loop_stmt->type == BLOCK_STATEMENT) {
+          local_vars += count_local_vars(block->body[i]->stmt->loop_stmt->block);
+        }
+        break;
+      case CONDITIONAL:
+        if (block->body[i]->stmt->if_stmt->type == BLOCK_STATEMENT) {
+          local_vars += count_local_vars(block->body[i]->stmt->if_stmt->block);
+        }
+        if (block->body[i]->stmt->else_stmt 
+            && block->body[i]->stmt->else_stmt->type == BLOCK_STATEMENT) {
+          local_vars += count_local_vars(block->body[i]->stmt->else_stmt->block);
+        }
+        break;
+      default:
+        break;
+      }
     }
   }
   return local_vars;
