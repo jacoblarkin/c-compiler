@@ -147,6 +147,15 @@ void print_statement(StatementNode* stmt, int n_indent)
   case BLOCK_STATEMENT:
     print_block(stmt->block, n_indent+1);
     break;
+  case GOTO_STATEMENT:
+    for(int j = 0; j < n_indent; j++) {
+      printf("\t");
+    }
+    printf("goto %s\n", stmt->label_name);
+    break;
+  case LABEL:
+    printf("%s:\n", stmt->label_name);
+    break;
   case EXPRESSION:
     for(int j = 0; j < n_indent; j++) {
       printf("\t");
