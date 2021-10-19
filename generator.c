@@ -269,7 +269,7 @@ void write_statement_assembly(StatementNode* stmt, FILE* as_file, int ret_tag)
       remove(assembly_filename);
       exit(1);
     }
-    fprintf(as_file, "  b L%zu\n", label.address);
+    fprintf(as_file, "  b .L%zu\n", label.address);
     break;
   case LABEL:
     label = find_symbol(stmt->label_name, labels);

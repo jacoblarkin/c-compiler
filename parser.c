@@ -338,6 +338,7 @@ StatementNode* construct_statement(Token first_tok)
       stmt->type = LABEL;
       stmt->label_name = first_tok.value;
       token_list_pop_front(tokens);
+      break;
     }
     // Intentional fallthrough to handle else case
   default:
