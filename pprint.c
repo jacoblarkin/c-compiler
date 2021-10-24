@@ -147,6 +147,27 @@ void print_statement(StatementNode* stmt, int n_indent)
   case BLOCK_STATEMENT:
     print_block(stmt->block, n_indent+1);
     break;
+  case SWITCH_STATEMENT:
+    for(int j = 0; j < n_indent; j++) {
+      printf("\t");
+    }
+    printf("switch ");
+    print_expression(stmt->switch_exp);
+    printf("\n");
+    print_block(stmt->switch_block, n_indent+1);
+    break;
+  case CASE_STATEMENT:
+    for(int j = 0; j < n_indent-1; j++) {
+      printf("\t");
+    }
+    printf("case %ld:\n", stmt->val);
+    break;
+  case DEFAULT_STATEMENT:
+    for(int j = 0; j < n_indent-1; j++) {
+      printf("\t");
+    }
+    printf("default:\n");
+    break;
   case GOTO_STATEMENT:
     for(int j = 0; j < n_indent; j++) {
       printf("\t");
