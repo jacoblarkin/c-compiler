@@ -68,6 +68,9 @@ typedef enum StatementType_e {
   BREAK_STATEMENT,
   CONTINUE_STATEMENT,
   BLOCK_STATEMENT,
+  SWITCH_STATEMENT,
+  CASE_STATEMENT,
+  DEFAULT_STATEMENT,
   GOTO_STATEMENT,
   LABEL
 } StatementType;
@@ -127,7 +130,7 @@ typedef struct DeclarationNode_s {
 } DeclarationNode;
 
 // Forward declare blocks to use in statements
-struct BlockNode_s; 
+struct BlockNode_s;
 
 typedef struct StatementNode_s {
   StatementType type;
@@ -146,6 +149,17 @@ typedef struct StatementNode_s {
       ExpressionNode* loop_condition;
       ExpressionNode* post_exp;
       struct StatementNode_s* loop_stmt;
+    };
+    struct { // switch
+      ExpressionNode* switch_exp;
+      struct BlockNode_s* switch_block;
+    };
+    struct { // case
+      int is_signed;
+      union {
+        long val;
+        unsigned long unsigned_val;
+      };
     };
     struct BlockNode_s* block;
     char* label_name;
