@@ -13,19 +13,35 @@ typedef enum Register_t {
   X24, X25, X26, X27, X28, X29, X30, X31
 } Register;
 
+typedef struct CaseLabelTableNode_s {
+  int def;
+  long val;
+  size_t tag;
+  struct CaseLabelTableNode_s* next;
+} CaseLabelTableNode;
+
+typedef struct CaseLabelTable_s {
+  CaseLabelTableNode* first;
+  struct CaseLabelTable_s* parent;
+} CaseLabelTable;
+
 void write_ast_assembly(ProgramNode, FILE*);
 void write_block_assembly(BlockNode*, FILE*, int);
 void write_declaration_assembly(DeclarationNode*, FILE*);
 void write_statement_assembly(StatementNode*, FILE*, int);
 void write_expression_assembly(Register, ExpressionNode*, FILE*);
+void write_switch_case_table(StatementNode*, FILE*);
 void check_next_reg(Register);
 int count_local_vars(BlockNode*);
+void construct_label_table(SymbolTable*, BlockNode*);
 size_t get_symbol_offset(char*, FILE*);
 
 int tag_counter = 0;
 
 SymbolTable* main_st;
 SymbolTable* top_st;
+SymbolTable* labels;
+CaseLabelTable* curr_switch_table;
 
 int func_stack_offset;
 
@@ -37,6 +53,7 @@ void generate_assembly(ProgramNode prgm, const char* filename)
   assembly_filename = calloc(len+1, sizeof(char));
   strncpy(assembly_filename, filename, len);
   assembly_filename[len-1] = 's';
+  labels = NULL;
   
   FILE* as_file = fopen(assembly_filename, "w");
   if(!as_file) {
@@ -64,6 +81,13 @@ void write_ast_assembly(ProgramNode prgm, FILE* as_file)
     fprintf(as_file, "  sub sp, sp, #%i\n", func_stack_offset);
     int ret_tag = tag_counter++;
     top_st = NULL;
+    SymbolTable* label_st = malloc(sizeof(SymbolTable));
+    label_st->top = NULL;
+    label_st->next = labels;
+    labels = label_st;
+    curr_switch_table = NULL;
+    push_constructed_symbol(NULL, 0, labels);
+    construct_label_table(labels, prgm.main->body);
     write_block_assembly(prgm.main->body, as_file, ret_tag);
     fprintf(as_file, ".L%i:\n", ret_tag);
     fprintf(as_file, "  add sp, sp, #%i\n", func_stack_offset);
@@ -118,6 +142,8 @@ void write_statement_assembly(StatementNode* stmt, FILE* as_file, int ret_tag)
   int tag0;
   int tag1;
   int tag2;
+  Symbol label;
+  CaseLabelTableNode* node;
   switch(stmt->type) {
   case RETURN_STATEMENT:
     write_expression_assembly(X0, stmt->expression, as_file); 
@@ -250,11 +276,99 @@ void write_statement_assembly(StatementNode* stmt, FILE* as_file, int ret_tag)
   case BLOCK_STATEMENT:
     write_block_assembly(stmt->block, as_file, ret_tag);
     break;
+  case SWITCH_STATEMENT:
+    tag0 = tag_counter++;
+    last_break_tag = current_break_tag;
+    current_break_tag = tag0;
+    write_expression_assembly(X0, stmt->switch_exp, as_file);
+    write_switch_case_table(stmt, as_file);
+    write_block_assembly(stmt->switch_block, as_file, ret_tag);
+    fprintf(as_file, ".L%i:\n", tag0);
+    current_break_tag = last_break_tag;
+    curr_switch_table = curr_switch_table->parent;
+    break;
+  case CASE_STATEMENT:
+    node = curr_switch_table->first;
+    while(node) {
+      if(!node->def && node->val == stmt->val) {
+        fprintf(as_file, ".L%zu:\n", node->tag);
+        break;
+      }
+      node = node->next;
+    }
+    break;
+  case DEFAULT_STATEMENT:
+    node = curr_switch_table->first;
+    while(node) {
+      if(node->def) {
+        fprintf(as_file, ".L%zu:\n", node->tag);
+        break;
+      }
+      node = node->next;
+    }
+    break;
+  case GOTO_STATEMENT:
+    label = find_symbol(stmt->label_name, labels);
+    if(!label.name) {
+      puts("Error: Could not find label for goto");
+      puts(stmt->label_name);
+      fclose(as_file);
+      remove(assembly_filename);
+      exit(1);
+    }
+    fprintf(as_file, "  b .L%zu\n", label.address);
+    break;
+  case LABEL:
+    label = find_symbol(stmt->label_name, labels);
+    if(!label.name) {
+      puts("Error: Could not find label");
+      puts(stmt->label_name);
+      fclose(as_file);
+      remove(assembly_filename);
+      exit(1);
+    }
+    fprintf(as_file, ".L%zu:\n", label.address);
+    break;
   case EXPRESSION:
     write_expression_assembly(X0, stmt->expression, as_file);
     break;
   default:
     break;
+  }
+}
+
+void write_switch_case_table(StatementNode* switch_stmt, FILE* as_file)
+{
+  BlockNode* block = switch_stmt->switch_block;
+  CaseLabelTable* table = malloc(sizeof(CaseLabelTable));
+  table->parent = curr_switch_table;
+  table->first = NULL;
+  curr_switch_table = table;
+  int def_tag = -1;
+  for(size_t i = 0; i < block->count; i++) {
+    if(block->body[i]->type == STATEMENT_ITEM
+       && block->body[i]->stmt->type == CASE_STATEMENT) {
+      CaseLabelTableNode* node = malloc(sizeof(CaseLabelTableNode));
+      node->tag = tag_counter++;
+      node->val = block->body[i]->stmt->val;
+      node->def = 0;
+      node->next = table->first;
+      table->first = node;
+      fprintf(as_file, "  cmp w%i, %ld\n", X0, node->val);
+      fprintf(as_file, "  beq .L%zu\n", node->tag);
+    } else if(block->body[i]->type == STATEMENT_ITEM
+       && block->body[i]->stmt->type == DEFAULT_STATEMENT) {
+      CaseLabelTableNode* node = malloc(sizeof(CaseLabelTableNode));
+      node->tag = tag_counter++;
+      node->val = 0;
+      node->def = 1;
+      node->next = table->first;
+      table->first = node;
+      def_tag = node->tag;
+    }
+  }
+  if(def_tag >= 0) {
+    fprintf(as_file, "  b .L%i\n", def_tag);
   }
 }
 
@@ -619,6 +733,40 @@ int count_local_vars(BlockNode* block)
     }
   }
   return local_vars;
+}
+
+void construct_label_table(SymbolTable* st, BlockNode* block)
+{
+  for(unsigned int i = 0; i < block->count; i++) {
+    if(block->body[i]->type == DECLARATION_ITEM) {
+      continue;
+    }
+    StatementNode* stmt = block->body[i]->stmt;
+    switch(stmt->type) {
+    case LABEL:
+      push_constructed_symbol(stmt->label_name, tag_counter++, st);
+      break;
+    case FORDECL_LOOP:
+    case WHILE_LOOP:
+    case DO_LOOP:
+    case FOR_LOOP:
+      if (stmt->loop_stmt->type == BLOCK_STATEMENT) {
+        construct_label_table(st, stmt->loop_stmt->block);
+      }
+      break;
+    case CONDITIONAL:
+      if (stmt->if_stmt->type == BLOCK_STATEMENT) {
+        construct_label_table(st, stmt->if_stmt->block);
+      }
+      if (stmt->else_stmt 
+          && stmt->else_stmt->type == BLOCK_STATEMENT) {
+        construct_label_table(st, stmt->else_stmt->block);
+      }
+      break;
+    default:
+      break;
+    }
+  }
 }
 
 size_t get_symbol_offset(char* name, FILE* as_file)

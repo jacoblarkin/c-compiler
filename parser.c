@@ -213,6 +213,8 @@ StatementNode* construct_statement(Token first_tok)
   }
   Token semicolon;
   Token next;
+  static int in_switch = 0;
+  static int switch_signed = 1;
   switch(first_tok.type) {
   case RETURN_TOK:
     stmt->type = RETURN_STATEMENT;
@@ -321,6 +323,73 @@ StatementNode* construct_statement(Token first_tok)
     stmt->type = BLOCK_STATEMENT;
     stmt->block = construct_block();
     break;
+  case SWITCH_TOK:
+    stmt->type = SWITCH_STATEMENT;
+    if(token_list_peek_front(tokens).type != LEFT_PAREN) {
+      print_error("Invalid switch statement. Missing paren.");
+    }
+    stmt->switch_exp = parse_primary_expression();
+    next = token_list_pop_front(tokens);
+    if(next.type != LEFT_BRACE) {
+      print_error("Invalid switch statement. Missing brace.");
+    }
+    in_switch = 1;
+    stmt->switch_block = construct_block();
+    in_switch = 0;
+    break;
+  case CASE_TOK:
+    stmt->type = CASE_STATEMENT;
+    if(!in_switch) {
+      print_error("Use of case outside of switch statement.");
+    }
+    next = token_list_pop_front(tokens);
+    if(token_structs[next.type].syntax != LITERAL_ST) {
+      print_error("Expected literal convertable to long.");
+    }
+    if(switch_signed) {
+      ExpressionNode* tmp = parse_number(next);
+      stmt->val = tmp->int_value;
+      free(tmp);
+    } else {
+      ExpressionNode* tmp = parse_number(next);
+      stmt->unsigned_val = tmp->int_value;
+      free(tmp);
+    }
+    next = token_list_pop_front(tokens);
+    if(next.type != COLON) {
+      print_error("Expected : after case.");
+    }
+    break;
+  case DEFAULT_TOK:
+    stmt->type = DEFAULT_STATEMENT;
+    next = token_list_pop_front(tokens);
+    if(next.type != COLON) {
+      print_error("Expected : after default.");
+    }
+    if(!in_switch) {
+      print_error("Use of default tag outside of switch statement.");
+    }
+    break;
+  case GOTO_TOK:
+    stmt->type = GOTO_STATEMENT;
+    next = token_list_pop_front(tokens);
+    if(next.type != IDENTIFIER) {
+      print_error("Expected label for goto.");
+    }
+    stmt->label_name = next.value;
+    semicolon = token_list_pop_front(tokens);
+    if (semicolon.type != SEMICOLON) {
+      print_error("Goto statement missing ;.");
+    }
+    break;
+  case IDENTIFIER:
+    if(token_list_peek_front(tokens).type == COLON) {
+      stmt->type = LABEL;
+      stmt->label_name = first_tok.value;
+      token_list_pop_front(tokens);
+      break;
+    }
+    // Intentional fallthrough to handle else case
   default:
     stmt->type = EXPRESSION;
     token_list_push_front(tokens, first_tok);
