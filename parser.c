@@ -11,7 +11,7 @@ typedef enum State_t {
 } State;
 
 void print_error(const char*);
-FunctionNode* construct_function(CType);
+FunctionNode* construct_function(Type);
 BlockNode* construct_block();
 DeclarationNode* construct_declaration(Token);
 StatementNode* construct_statement(Token);
@@ -24,6 +24,7 @@ ExpressionNode* parse_number(Token);
 ExpressionNode* parse_unary_operator(Token);
 ExpressionNode* parse_assignment(void);
 ExpressionNode* parse_var(Token);
+Type parse_type(Token);
 int operator_precedence(Token);
 int right_assoc_operator(Token);
 int find_right_paren(void);
@@ -52,7 +53,7 @@ ProgramNode parse(TokenList* _tokens)
       if(prgm.main != NULL) {
         print_error("More than one main function.");
       }
-      CType main_type = {.base = INT_VAR, .mods = NO_MOD};
+      Type main_type = {.base = INT_VAR, .cvr = 0, .storage = 0, .signed_ = 1};
       prgm.main = construct_function(main_type);
       break;
     case IDENTIFIER:
@@ -76,7 +77,7 @@ void print_error(const char * msg)
   exit(1);
 }
 
-FunctionNode* construct_function(CType fn_type)
+FunctionNode* construct_function(Type fn_type)
 {
   FunctionNode* func = malloc(sizeof(FunctionNode));
   if(!func) {
@@ -85,13 +86,7 @@ FunctionNode* construct_function(CType fn_type)
   }
   Token fn_name = token_list_pop_front(tokens);
   func->name = fn_name.value;
-  switch(fn_type.base) {
-  case INT_VAR:
-    func->type = INT_RET;
-    break;
-  default:
-    print_error("Can only have funcs that return int.");
-  }
+  func->type = fn_type;
   int left_paren = 0;
   int right_paren = 0;
   Token plist = token_list_pop_front(tokens);
@@ -157,20 +152,125 @@ BlockNode* construct_block()
                            sizeof(BlockItem*) * blck->capacity);
     }
     BlockItem* item = malloc(sizeof(BlockItem));
-    switch (st_begin.type) {
-    case INT_TOK:
+    if(token_structs[st_begin.type].declaration) {
       item->decl = construct_declaration(st_begin);
       item->type = DECLARATION_ITEM;
-      break;
-    default:
+    } else {
       item->stmt = construct_statement(st_begin);
       item->type = STATEMENT_ITEM;
-      break;
     }
     blck->body[blck->count++] = item;
     st_begin = token_list_pop_front(tokens);
   }
   return blck;
+}
+
+Type parse_type(Token first_tok)
+{
+  Type var_type = (Type){.base = UNKNOWN_VAR, .cvr = NO_CVRQUAL,
+                           .storage = NO_STORAGEQUAL, .signed_ = 1};
+  Token curr_tok = first_tok;
+  int signedness_set = 0;
+  while(token_structs[curr_tok.type].syntax == KEYWORD_ST) {
+    switch(curr_tok.type) {
+    case CHAR_TOK:
+      if(var_type.base != UNKNOWN_VAR) {
+        print_error("Multiple types in var declaration");
+      }
+      var_type.base = CHAR_VAR;
+      break;
+    case SHORT_TOK:
+      if(var_type.base != UNKNOWN_VAR && var_type.base != INT_VAR) {
+        print_error("Multiple types in var declaration");
+      }
+      var_type.base = SHORT_VAR;
+      break;
+    case INT_TOK:
+      if(var_type.base != UNKNOWN_VAR && (var_type.base != SHORT_VAR
+            && var_type.base != LONG_VAR)) {
+        print_error("Multiple types in var declaration");
+      } else if(var_type.base == UNKNOWN_VAR) {
+        var_type.base = INT_VAR; 
+      }
+      break;
+    case LONG_TOK:
+      if(var_type.base != UNKNOWN_VAR && (var_type.base != INT_VAR 
+            && var_type.base != LONG_VAR)) {
+        print_error("Multiple types in var declaration");
+      } else if(var_type.base == LONG_VAR) {
+        var_type.base = LONG_LONG_VAR;
+      } else {
+        var_type.base = LONG_VAR;
+      }
+      break;
+    case AUTO_TOK:
+      if(var_type.storage != NO_STORAGEQUAL) {
+        print_error("Multiple storage qualifiers in var declaration");
+      }
+      var_type.storage = AUTO_STORAGEQUAL;
+      break;
+    case EXTERN_TOK:
+      if(var_type.storage != NO_STORAGEQUAL) {
+        print_error("Multiple storage qualifiers in var declaration");
+      }
+      var_type.storage = EXTERN_STORAGEQUAL;
+      break;
+    case STATIC_TOK:
+      if(var_type.storage != NO_STORAGEQUAL) {
+        print_error("Multiple storage qualifiers in var declaration");
+      }
+      var_type.storage = STATIC_STORAGEQUAL;
+      break;
+    case REGISTER_TOK:
+      if(var_type.storage != NO_STORAGEQUAL) {
+        print_error("Multiple storage qualifiers in var declaration");
+      }
+      var_type.storage = REGISTER_STORAGEQUAL;
+      break;
+    case CONST_TOK:
+      var_type.cvr |= CONST_CVRQUAL;
+      break;
+    case VOLATILE_TOK:
+      var_type.cvr |= VOLATILE_CVRQUAL;
+      break;
+    case RESTRICT_TOK:
+      var_type.cvr |= RESTRICT_CVRQUAL;
+      break;
+    case SIGNED_TOK:
+      if(signedness_set) {
+        print_error("Multiple signededness qualifiers in declaration");
+      }
+      signedness_set = 1;
+      var_type.signed_ = 1;
+      break;
+    case UNSIGNED_TOK:
+      if(signedness_set) {
+        print_error("Multiple signededness qualifiers in declaration");
+      }
+      signedness_set = 1;
+      var_type.signed_ = 0;
+      break;
+    default:
+      print_error("Uknown Type");
+    }
+    curr_tok = token_list_pop_front(tokens);
+  }
+  if(var_type.base == UNKNOWN_VAR && signedness_set) {
+    var_type.base = INT_VAR;
+  }
+  token_list_push_front(tokens, curr_tok);
+  return var_type;
+}
+
+int compatible_types(Type from, Type to)
+{
+  if(from.signed_ != to.signed_) {
+    return 0;
+  }
+  if(from.base > to.base){
+    return 0;
+  }
+  return 1;
 }
 
 DeclarationNode* construct_declaration(Token first_tok)
@@ -180,22 +280,17 @@ DeclarationNode* construct_declaration(Token first_tok)
     perror("Error");
     exit(1);
   } 
-  if(first_tok.type == INT_TOK) {
-    decl->var_type = INT_VAR;
-  } else {
-    print_error("Unrecognize var type.");
-  }
-  Token name = token_list_peek_front(tokens);
+  decl->var_type = parse_type(first_tok);
+  Token name = token_list_pop_front(tokens);
   if(name.type != IDENTIFIER) {
     print_error("Expected identifier to declar var.");
   }
   decl->var_name = name.value;
   decl->assignment_expression = NULL;
-  Token assign = token_list_peek_n(tokens, 1);
+  Token assign = token_list_peek_front(tokens);
   if(assign.type == ASSIGN) {
+    token_list_push_front(tokens, name);
     decl->assignment_expression = construct_expression();
-  } else {
-    token_list_pop_front(tokens);
   }
   Token semicolon = token_list_pop_front(tokens);
   if (semicolon.type != SEMICOLON) {
@@ -448,6 +543,30 @@ ExpressionNode* parse_number(Token num)
   case OCT_LITERAL:
     number->type = INT_VALUE;
     number->int_value = (int)strtoul(num.value, &dummy, 8);
+    break;
+  case CHAR_LITERAL:
+    number->type = CHAR_VALUE;
+    number->char_value = num.value[1];
+    break;
+  case UINT_LITERAL:
+    number->type = UINT_VALUE;
+    number->uint_value = (int)strtoul(num.value, &dummy, 10);
+    break;
+  case LONG_LITERAL:
+    number->type = LONG_VALUE;
+    number->long_value = atol(num.value);
+    break;
+  case ULONG_LITERAL:
+    number->type = ULONG_VALUE;
+    number->ulong_value = strtoul(num.value, &dummy, 10);
+    break;
+  case LONGLONG_LITERAL:
+    number->type = LONGLONG_VALUE;
+    number->longlong_value = atoll(num.value);
+    break;
+  case ULONGLONG_LITERAL:
+    number->type = ULONGLONG_VALUE;
+    number->ulonglong_value = strtoull(num.value, &dummy, 10);
     break;
   default:
     print_error("This is not a number");

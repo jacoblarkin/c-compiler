@@ -123,12 +123,38 @@ TokenType get_token_type(const char* tok)
 {
   if(isdigit(tok[0])) {
     if(tok[0] == '0') {
-      if( tok[1] == 'x') {
+      if(tok[1] == 'x' || tok[1] == 'X') {
         return HEX_LITERAL;
       }
       return OCT_LITERAL;
     }
+    int ndigit = strlen(tok);
+    char lst = tok[ndigit-1];
+    char slst = tok[ndigit-2];
+    char tlst = tok[ndigit-3];
+    if(lst == 'l' || lst == 'L') {
+      if(slst == 'l' || slst == 'L') {
+        if(tlst == 'u' || tlst == 'U') {
+          return ULONGLONG_LITERAL;
+        }
+        return LONGLONG_LITERAL;
+      } else if(slst == 'u' || slst == 'U') {
+        return ULONG_LITERAL;
+      }
+      return LONG_LITERAL;
+    } else if (lst == 'u' || lst == 'U') {
+      if(slst == 'l' || slst == 'L') {
+        if(tlst == 'l' || tlst == 'L') {
+          return ULONGLONG_LITERAL;
+        }
+        return ULONG_LITERAL;
+      }
+      return UINT_LITERAL;
+    }
     return INT_LITERAL;
+  }
+  if(tok[0] == '\'') {
+    return CHAR_LITERAL;
   }
   for(int i = 1; token_structs[i].tok_type; i++) {
     if(strcmp(tok, token_structs[i].name) == 0) {

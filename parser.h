@@ -7,7 +7,16 @@
 
 typedef enum ExpressionType_t {
   UNKNOWN_EXP,
+  CHAR_VALUE,
+  UCHAR_VALUE,
+  SHORT_VALUE,
+  USHORT_VALUE,
   INT_VALUE,
+  UINT_VALUE,
+  LONG_VALUE,
+  ULONG_VALUE,
+  LONGLONG_VALUE,
+  ULONGLONG_VALUE,
   NEGATE,
   LOG_NOT,
   BITWISE_COMP,
@@ -51,10 +60,14 @@ typedef enum ExpressionType_t {
 } ExpressionType;
 
 typedef enum VarType_e {
+  UNKNOWN_VAR = 0,
+  CHAR_VAR,
+  SHORT_VAR,
   INT_VAR,
+  LONG_VAR,
+  LONG_LONG_VAR,
   FLOAT_VAR,
-  DOUBLE_VAR,
-  CHAR_VAR
+  DOUBLE_VAR
 } VarType;
 
 typedef enum StatementType_e {
@@ -80,35 +93,42 @@ typedef enum BlockItemType_e {
   DECLARATION_ITEM
 } BlockItemType;
 
-typedef enum ReturnType_e {
-  INT_RET
-} ReturnType;
+typedef enum CVRQual_e {
+  NO_CVRQUAL = 0,
+  CONST_CVRQUAL = 1<<0,
+  VOLATILE_CVRQUAL = 1<<1,
+  RESTRICT_CVRQUAL = 1<<2
+} CVRQual;
 
-typedef enum TypeModifier_e {
-  NO_MOD = 0,
-  CONST_MOD = 1 << 0,
-  STATIC_MOD = 1 << 1,
-  SHORT_MOD = 1 << 2,
-  LONG_MOD = 1 << 3,
-  LONGLONG_MOD = 1 << 4,
-  SIGNED_MOD = 1 << 5,
-  UNSIGNED_MOD = 1 << 6,
-  VOLATILE_MOD = 1 << 7,
-  REGISTER_MOD = 1 << 8,
-  RESTRICT_MOD = 1 << 9,
-  AUTO_MOD = 1 << 10,
-  EXTERN_MOD = 1 << 11
-} TypeModifier;
+typedef enum StorageQual_e {
+  NO_STORAGEQUAL = 0,
+  AUTO_STORAGEQUAL,
+  STATIC_STORAGEQUAL,
+  EXTERN_STORAGEQUAL,
+  REGISTER_STORAGEQUAL
+} StorageQual;
 
-typedef struct CType_s {
+typedef struct Type_s {
   VarType base;
-  TypeModifier mods;
-} CType;
+  CVRQual cvr;
+  StorageQual storage;
+  int signed_;
+} Type;
 
 typedef struct ExpressionNode_s {
   ExpressionType type;
+  Type value_type;
   union {
+    char char_value;
+    unsigned char uchar_value;
+    short short_value;
+    unsigned short ushort_value;
     int int_value;
+    unsigned int uint_value;
+    long long_value;
+    unsigned long ulong_value;
+    long long longlong_value;
+    unsigned long long ulonglong_value;
     struct ExpressionNode_s* unary_operand;
     struct { // For binary operators
       struct ExpressionNode_s* left_operand;
@@ -124,7 +144,7 @@ typedef struct ExpressionNode_s {
 } ExpressionNode;
 
 typedef struct DeclarationNode_s {
-  VarType var_type;
+  Type var_type;
   char* var_name;
   ExpressionNode* assignment_expression;
 } DeclarationNode;
@@ -182,7 +202,7 @@ typedef struct BlockNode_s {
 
 typedef struct FunctionNode_s {
   char* name;
-  ReturnType type;
+  Type type;
   BlockNode* body;
 } FunctionNode;
 

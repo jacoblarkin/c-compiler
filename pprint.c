@@ -28,7 +28,7 @@ void pretty_print(ProgramNode program)
 {
   if(program.main) {
     FunctionNode* main = program.main;
-    printf("func main -> %s:\n", (main->type == INT_RET ? "int" : "void"));
+    printf("func main -> %s:\n", (main->type.base == INT_VAR ? "int" : "void"));
     print_block(main->body, 1);
   }
 }
