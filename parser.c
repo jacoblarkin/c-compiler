@@ -535,38 +535,56 @@ ExpressionNode* parse_number(Token num)
   case INT_LITERAL:
     number->type = INT_VALUE;
     number->int_value = atoi(num.value);
+    number->value_type.base = INT_VAR;
+    number->value_type.signed_ = 1;
     break;
   case HEX_LITERAL:
     number->type = INT_VALUE;
     number->int_value = (int)strtoul(num.value, &dummy, 16);
+    number->value_type.base = INT_VAR;
+    number->value_type.signed_ = 1;
     break;
   case OCT_LITERAL:
     number->type = INT_VALUE;
     number->int_value = (int)strtoul(num.value, &dummy, 8);
+    number->value_type.base = INT_VAR;
+    number->value_type.signed_ = 1;
     break;
   case CHAR_LITERAL:
     number->type = CHAR_VALUE;
     number->char_value = num.value[1];
+    number->value_type.base = INT_VAR;
+    number->value_type.signed_ = 1;
     break;
   case UINT_LITERAL:
     number->type = UINT_VALUE;
     number->uint_value = (int)strtoul(num.value, &dummy, 10);
+    number->value_type.base = INT_VAR;
+    number->value_type.signed_ = 0;
     break;
   case LONG_LITERAL:
     number->type = LONG_VALUE;
     number->long_value = atol(num.value);
+    number->value_type.base = LONG_VAR;
+    number->value_type.signed_ = 1;
     break;
   case ULONG_LITERAL:
     number->type = ULONG_VALUE;
     number->ulong_value = strtoul(num.value, &dummy, 10);
+    number->value_type.base = LONG_VAR;
+    number->value_type.signed_ = 0;
     break;
   case LONGLONG_LITERAL:
     number->type = LONGLONG_VALUE;
     number->longlong_value = atoll(num.value);
+    number->value_type.base = LONG_LONG_VAR;
+    number->value_type.signed_ = 1;
     break;
   case ULONGLONG_LITERAL:
     number->type = ULONGLONG_VALUE;
     number->ulonglong_value = strtoull(num.value, &dummy, 10);
+    number->value_type.base = LONG_LONG_VAR;
+    number->value_type.signed_ = 0;
     break;
   default:
     print_error("This is not a number");
@@ -591,6 +609,7 @@ ExpressionNode* parse_unary_operator(Token op)
       && unary_op->unary_operand->type != VAR_EXP) {
     print_error("Pre Inc/Dec must act on variable.");
   }
+  unary_op->value_type = unary_op->unary_operand->value_type;
   return unary_op;
 }
 
@@ -603,17 +622,21 @@ ExpressionNode* parse_var(Token var)
   }
   variable->type = VAR_EXP;
   variable->var_name = var.value;
+  variable->value_type.base = INT_VAR;
+  variable->value_type.signed_ = 1;
   Token next = token_list_peek_front(tokens);
   if(next.type == PLUSPLUS) {
     ExpressionNode* pp = malloc(sizeof(ExpressionNode));
     pp->type = POSTINC_EXP;
     pp->unary_operand = variable;
+    pp->value_type = variable->value_type;
     token_list_pop_front(tokens);
     return pp;
   } else if(next.type == MINUSMINUS) {
     ExpressionNode* mm = malloc(sizeof(ExpressionNode));
     mm->type = POSTDEC_EXP;
     mm->unary_operand = variable;
+    mm->value_type = variable->value_type;
     token_list_pop_front(tokens);
     return mm;
   }
