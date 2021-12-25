@@ -1,6 +1,7 @@
 #include "parser.h"
 #include "token.h"
 #include "c_lang.h"
+#include "symbol.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -32,6 +33,9 @@ void handle_ternary(void);
 
 TokenList* tokens;
 
+SymbolTable* main_st;
+SymbolTable* top_st;
+
 ProgramNode parse(TokenList* _tokens)
 {
   tokens = _tokens;
@@ -54,6 +58,7 @@ ProgramNode parse(TokenList* _tokens)
         print_error("More than one main function.");
       }
       Type main_type = {.base = INT_VAR, .cvr = 0, .storage = 0, .signed_ = 1};
+      top_st = NULL;
       prgm.main = construct_function(main_type);
       break;
     case IDENTIFIER:
@@ -109,7 +114,10 @@ FunctionNode* construct_function(Type fn_type)
   }
   int returned = 0;
   func->body = construct_block();
-  BlockItem* last_item = func->body->body[func->body->count - 1];
+  BlockItem* last_item = NULL;
+  if(func->body->count > 0) {
+    last_item = func->body->body[func->body->count - 1];
+  }
   if(last_item && last_item->type == STATEMENT_ITEM 
       && last_item->stmt->type == RETURN_STATEMENT) {
     returned = 1;
@@ -144,6 +152,11 @@ BlockNode* construct_block()
   blck->count = 0;
   blck->capacity = 1;
   blck->body = calloc(1, sizeof(BlockItem*));
+  SymbolTable* block_st = malloc(sizeof(SymbolTable));
+  block_st->top = NULL;
+  block_st->next = top_st;
+  top_st = block_st;
+  push_constructed_symbol(NULL, 0, block_st);
   Token st_begin = token_list_pop_front(tokens);
   while(st_begin.type != RIGHT_BRACE) {
     if(blck->count == blck->capacity) {
@@ -162,6 +175,8 @@ BlockNode* construct_block()
     blck->body[blck->count++] = item;
     st_begin = token_list_pop_front(tokens);
   }
+  top_st = block_st->next;
+  delete_symbol_table(block_st);
   return blck;
 }
 
@@ -286,6 +301,7 @@ DeclarationNode* construct_declaration(Token first_tok)
     print_error("Expected identifier to declar var.");
   }
   decl->var_name = name.value;
+  push_constructed_typed_symbol(name.value, decl->var_type, top_st);
   decl->assignment_expression = NULL;
   Token assign = token_list_peek_front(tokens);
   if(assign.type == ASSIGN) {
@@ -308,6 +324,7 @@ StatementNode* construct_statement(Token first_tok)
   }
   Token semicolon;
   Token next;
+  SymbolTable* for_st = NULL;
   static int in_switch = 0;
   static int switch_signed = 1;
   switch(first_tok.type) {
@@ -372,6 +389,11 @@ StatementNode* construct_statement(Token first_tok)
     next = token_list_pop_front(tokens);
     if(next.type == INT_TOK) {
       stmt->type = FORDECL_LOOP;
+      for_st = malloc(sizeof(SymbolTable));
+      for_st->top = NULL;
+      for_st->next = top_st;
+      top_st = for_st;
+      push_constructed_symbol(NULL, 0, for_st);
       stmt->init_decl = construct_declaration(next);
     } else {
       stmt->type = FOR_LOOP;
@@ -494,6 +516,10 @@ StatementNode* construct_statement(Token first_tok)
       print_error("Invalid statement.");
     }
     break;
+  }
+  if(for_st) {
+    top_st = for_st->next;
+    delete_symbol_table(for_st);
   }
   return stmt;
 }
@@ -622,8 +648,16 @@ ExpressionNode* parse_var(Token var)
   }
   variable->type = VAR_EXP;
   variable->var_name = var.value;
-  variable->value_type.base = INT_VAR;
-  variable->value_type.signed_ = 1;
+  Symbol sym = {.name = NULL};
+  SymbolTable* st = top_st;
+  while(!sym.name) {
+    sym = find_symbol(var.value, st);
+    if(!st->next && !sym.name) {
+      print_error("Var not found!");
+    }
+    st = st->next;
+  }
+  variable->value_type = sym.type;
   Token next = token_list_peek_front(tokens);
   if(next.type == PLUSPLUS) {
     ExpressionNode* pp = malloc(sizeof(ExpressionNode));

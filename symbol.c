@@ -27,6 +27,18 @@ void push_constructed_symbol(char* name, size_t address, SymbolTable* st)
   st->top = new;
 }
 
+void push_constructed_typed_symbol(char* name, Type type, SymbolTable* st)
+{
+  if(!st) {
+    st = &global_symbol_table;
+  }
+  SymbolTableNode* new = malloc(sizeof(SymbolTableNode));
+  Symbol s = {.name = name, .type = type};
+  new->symbol = s;
+  new->next = st->top;
+  st->top = new;
+}
+
 Symbol find_symbol(char* name, SymbolTable* st)
 {
   if(!st) {
