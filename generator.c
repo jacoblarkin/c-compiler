@@ -76,7 +76,7 @@ void write_ast_assembly(ProgramNode prgm, FILE* as_file)
 {
   if(prgm.main) {
     fputs("_main:\n", as_file);
-    func_stack_offset = 4*count_local_vars(prgm.main->body);
+    func_stack_offset = count_local_vars(prgm.main->body);
     if(func_stack_offset % 16) {
       func_stack_offset += (16 - func_stack_offset % 16);
     }
@@ -780,16 +780,33 @@ void check_next_reg(Register reg)
   }
 }
 
+int type_size(Type type)
+{
+  switch(type.base) {
+  case CHAR_VAR: return 1;
+  case SHORT_VAR: return 2;
+  case INT_VAR: return 4;
+  case LONG_VAR: return 8;
+  case LONG_LONG_VAR: return 8;
+  case FLOAT_VAR: return 4;
+  case DOUBLE_VAR: return 8;
+  default: return 4;
+  }
+}
+
 int count_local_vars(BlockNode* block)
 {
   int local_vars = 0;
+  Type type;
   for(unsigned int i = 0; i < block->count; i++) {
     if(block->body[i]->type == DECLARATION_ITEM) {
-      local_vars++;
+      type = block->body[i]->decl->var_type;
+      local_vars += type_size(type);
     } else {
       switch(block->body[i]->stmt->type) {
       case FORDECL_LOOP:
-        local_vars++;
+        type = block->body[i]->stmt->init_decl->var_type;
+        local_vars += type_size(type);
         if (block->body[i]->stmt->loop_stmt->type == BLOCK_STATEMENT) {
           local_vars += count_local_vars(block->body[i]->stmt->loop_stmt->block);
         }
