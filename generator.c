@@ -586,6 +586,7 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
     break;
   case ASSIGN_EXP:
     offset = get_symbol_offset(exp->left_operand->var_name, as_file);
+    suffix = suffix_for_type(exp->left_operand->value_type);
     write_expression_assembly(reg, exp->right_operand, as_file);
     if(suffix) {
       fprintf(as_file, "  str%c %c%i, [sp, %lu]\n", suffix, reg_prefix, reg, offset);
@@ -595,6 +596,7 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
     break;
   case PLUSEQ_EXP:
     offset = get_symbol_offset(exp->left_operand->var_name, as_file);
+    suffix = suffix_for_type(exp->left_operand->value_type);
     check_next_reg(reg);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
     write_expression_assembly(reg, exp->left_operand, as_file);
@@ -608,6 +610,7 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
     break;
   case MINUSEQ_EXP:
     offset = get_symbol_offset(exp->left_operand->var_name, as_file);
+    suffix = suffix_for_type(exp->left_operand->value_type);
     check_next_reg(reg);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
     write_expression_assembly(reg, exp->left_operand, as_file);
@@ -621,6 +624,7 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
     break;
   case TIMESEQ_EXP:
     offset = get_symbol_offset(exp->left_operand->var_name, as_file);
+    suffix = suffix_for_type(exp->left_operand->value_type);
     check_next_reg(reg);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
     write_expression_assembly(reg, exp->left_operand, as_file);
@@ -634,6 +638,7 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
     break;
   case DIVEQ_EXP:
     offset = get_symbol_offset(exp->left_operand->var_name, as_file);
+    suffix = suffix_for_type(exp->left_operand->value_type);
     check_next_reg(reg);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
     write_expression_assembly(reg, exp->left_operand, as_file);
@@ -647,6 +652,7 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
     break;
   case MODEQ_EXP:
     offset = get_symbol_offset(exp->left_operand->var_name, as_file);
+    suffix = suffix_for_type(exp->left_operand->value_type);
     check_next_reg(reg);
     check_next_reg(reg+1);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
@@ -663,6 +669,7 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
     break;
   case LSHEQ_EXP:
     offset = get_symbol_offset(exp->left_operand->var_name, as_file);
+    suffix = suffix_for_type(exp->left_operand->value_type);
     check_next_reg(reg);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
     write_expression_assembly(reg, exp->left_operand, as_file);
@@ -676,6 +683,7 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
     break;
   case RSHEQ_EXP:
     offset = get_symbol_offset(exp->left_operand->var_name, as_file);
+    suffix = suffix_for_type(exp->left_operand->value_type);
     check_next_reg(reg);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
     write_expression_assembly(reg, exp->left_operand, as_file);
@@ -689,6 +697,7 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
     break;
   case ANDEQ_EXP:
     offset = get_symbol_offset(exp->left_operand->var_name, as_file);
+    suffix = suffix_for_type(exp->left_operand->value_type);
     check_next_reg(reg);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
     write_expression_assembly(reg, exp->left_operand, as_file);
@@ -702,6 +711,7 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
     break;
   case OREQ_EXP:
     offset = get_symbol_offset(exp->left_operand->var_name, as_file);
+    suffix = suffix_for_type(exp->left_operand->value_type);
     check_next_reg(reg);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
     write_expression_assembly(reg, exp->left_operand, as_file);
@@ -715,6 +725,7 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
     break;
   case XOREQ_EXP:
     offset = get_symbol_offset(exp->left_operand->var_name, as_file);
+    suffix = suffix_for_type(exp->left_operand->value_type);
     check_next_reg(reg);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
     write_expression_assembly(reg, exp->left_operand, as_file);
