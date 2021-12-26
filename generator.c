@@ -37,6 +37,7 @@ void construct_label_table(SymbolTable*, BlockNode*);
 size_t get_symbol_offset(char*, FILE*);
 char reg_prefix_for_type(Type type);
 char suffix_for_type(Type type);
+int type_size(Type type);
 
 int tag_counter = 0;
 
@@ -119,7 +120,7 @@ void write_block_assembly(BlockNode* block, FILE* as_file, int ret_tag)
 
 void write_declaration_assembly(DeclarationNode* decl, FILE* as_file)
 {
-  static int next_offset = 4;
+  static int next_offset = 0;
   if(find_symbol(decl->var_name, top_st).name) {
     puts("Error: duplicate declaration of variable:");
     puts(decl->var_name);
@@ -127,11 +128,11 @@ void write_declaration_assembly(DeclarationNode* decl, FILE* as_file)
     remove(assembly_filename);
     exit(1);
   }
+  next_offset += type_size(decl->var_type);
   push_constructed_symbol(decl->var_name, next_offset, top_st);
   if(decl->assignment_expression) {
     write_expression_assembly(X0, decl->assignment_expression, as_file);
   }
-  next_offset += 4;
 }
 
 void write_statement_assembly(StatementNode* stmt, FILE* as_file, int ret_tag)
@@ -388,8 +389,35 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
   char sign_char = exp->value_type.signed_ ? 's' : 'u';
   char suffix = suffix_for_type(exp->value_type);
   switch(exp->type) {
+  case CHAR_VALUE:
+    fprintf(as_file, "  movb w%i, #%i\n", reg, exp->char_value);
+    break;
+  case UCHAR_VALUE:
+    fprintf(as_file, "  movb w%i, #%i\n", reg, exp->uchar_value);
+    break;
+  case SHORT_VALUE:
+    fprintf(as_file, "  movh w%i, #%i\n", reg, exp->short_value);
+    break;
+  case USHORT_VALUE:
+    fprintf(as_file, "  movh w%i, #%i\n", reg, exp->ushort_value);
+    break;
   case INT_VALUE:
     fprintf(as_file, "  mov w%i, #%i\n", reg, exp->int_value);
+    break;
+  case UINT_VALUE:
+    fprintf(as_file, "  mov w%i, #%i\n", reg, exp->uint_value);
+    break;
+  case LONG_VALUE:
+    fprintf(as_file, "  mov x%i, #%ld\n", reg, exp->long_value);
+    break;
+  case ULONG_VALUE:
+    fprintf(as_file, "  mov x%i, #%lu\n", reg, exp->ulong_value);
+    break;
+  case LONGLONG_VALUE:
+    fprintf(as_file, "  mov x%i, #%lld\n", reg, exp->longlong_value);
+    break;
+  case ULONGLONG_VALUE:
+    fprintf(as_file, "  mov x%i, #%llu\n", reg, exp->ulonglong_value);
     break;
   case NEGATE:
     write_expression_assembly(reg, exp->unary_operand, as_file);

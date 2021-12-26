@@ -590,6 +590,11 @@ ExpressionNode* parse_number(Token num)
     break;
   case LONG_LITERAL:
     number->type = LONG_VALUE;
+    printf("Long literal %s\n", num.value);
+    if(num.value[strlen(num.value)-1] == 'l' ||
+        num.value[strlen(num.value)-1] == 'L') {
+      num.value[strlen(num.value)-1] = '\0';
+    }
     number->long_value = atol(num.value);
     number->value_type.base = LONG_VAR;
     number->value_type.signed_ = 1;
@@ -802,6 +807,14 @@ int operator_precedence(Token op)
   return token_structs[op.type].precedence;
 }
 
+Type larger_type(Type lhs, Type rhs)
+{
+  if(lhs.base > rhs.base) return lhs;
+  if(rhs.base > lhs.base) return rhs;
+  if(lhs.signed_) return rhs;
+  return lhs;
+}
+
 ExpressionNode* construct_binary_expression(Token op, ExpressionNode* lhs,
                                             ExpressionNode* rhs)
 {
@@ -825,6 +838,7 @@ ExpressionNode* construct_binary_expression(Token op, ExpressionNode* lhs,
       print_error("Invalid conditional expression.");
     }
     lhs->else_exp = rhs;
+    lhs->value_type = larger_type(lhs->if_exp->value_type, rhs->value_type);
     return lhs;
   }
   if(token_structs[op.type].need_lvalue 
@@ -836,5 +850,6 @@ ExpressionNode* construct_binary_expression(Token op, ExpressionNode* lhs,
   }
   binary_exp->left_operand = lhs;
   binary_exp->right_operand = rhs;
+  binary_exp->value_type = larger_type(lhs->value_type, rhs->value_type);
   return binary_exp;
 }
