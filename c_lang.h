@@ -19,6 +19,7 @@ struct TokenStruct_s {
     SyntaxType syntax;
     ExpressionType primary_type;
     ExpressionType binary_type;
+    int declaration;
     int precedence;
     int right_assoc;
     int need_lvalue;
@@ -26,6 +27,6 @@ struct TokenStruct_s {
     const char* tok_out;
 };
 
-extern struct TokenStruct_s token_structs[84];
+extern struct TokenStruct_s token_structs[];
 
 #endif

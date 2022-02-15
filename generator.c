@@ -35,6 +35,9 @@ void check_next_reg(Register);
 int count_local_vars(BlockNode*);
 void construct_label_table(SymbolTable*, BlockNode*);
 size_t get_symbol_offset(char*, FILE*);
+char reg_prefix_for_type(Type type);
+char suffix_for_type(Type type);
+int type_size(Type type);
 
 int tag_counter = 0;
 
@@ -74,7 +77,7 @@ void write_ast_assembly(ProgramNode prgm, FILE* as_file)
 {
   if(prgm.main) {
     fputs("_main:\n", as_file);
-    func_stack_offset = 4*count_local_vars(prgm.main->body);
+    func_stack_offset = count_local_vars(prgm.main->body);
     if(func_stack_offset % 16) {
       func_stack_offset += (16 - func_stack_offset % 16);
     }
@@ -117,7 +120,7 @@ void write_block_assembly(BlockNode* block, FILE* as_file, int ret_tag)
 
 void write_declaration_assembly(DeclarationNode* decl, FILE* as_file)
 {
-  static int next_offset = 4;
+  static int next_offset = 0;
   if(find_symbol(decl->var_name, top_st).name) {
     puts("Error: duplicate declaration of variable:");
     puts(decl->var_name);
@@ -125,12 +128,11 @@ void write_declaration_assembly(DeclarationNode* decl, FILE* as_file)
     remove(assembly_filename);
     exit(1);
   }
+  next_offset += type_size(decl->var_type);
   push_constructed_symbol(decl->var_name, next_offset, top_st);
   if(decl->assignment_expression) {
     write_expression_assembly(X0, decl->assignment_expression, as_file);
-    //fprintf(as_file, "  str w0, [sp, %i]\n", func_stack_offset - next_offset);
   }
-  next_offset += 4;
 }
 
 void write_statement_assembly(StatementNode* stmt, FILE* as_file, int ret_tag)
@@ -155,7 +157,8 @@ void write_statement_assembly(StatementNode* stmt, FILE* as_file, int ret_tag)
       tag1 = tag_counter++;
     }
     write_expression_assembly(X0, stmt->condition, as_file);
-    fprintf(as_file, "  cmp w%i, 0\n", X0);
+    fprintf(as_file, "  cmp %c%i, 0\n", 
+        reg_prefix_for_type(stmt->condition->value_type), X0);
     fprintf(as_file, "  beq .L%i\n", tag0);
     write_statement_assembly(stmt->if_stmt, as_file, ret_tag);
     if(stmt->else_stmt){
@@ -175,12 +178,14 @@ void write_statement_assembly(StatementNode* stmt, FILE* as_file, int ret_tag)
     current_continue_tag = tag0;
     current_break_tag = tag1;
     write_expression_assembly(X0, stmt->loop_condition, as_file);
-    fprintf(as_file, "  cmp w%i, 0\n", X0);
+    fprintf(as_file, "  cmp %c%i, 0\n", 
+        reg_prefix_for_type(stmt->loop_condition->value_type), X0);
     fprintf(as_file, "  beq .L%i\n", tag1);
     fprintf(as_file, ".L%i:\n", tag0);
     write_statement_assembly(stmt->loop_stmt, as_file, ret_tag);
     write_expression_assembly(X0, stmt->loop_condition, as_file);
-    fprintf(as_file, "  cmp w%i, 0\n", X0);
+    fprintf(as_file, "  cmp %c%i, 0\n", 
+        reg_prefix_for_type(stmt->loop_condition->value_type), X0);
     fprintf(as_file, "  bne .L%i\n", tag0);
     fprintf(as_file, ".L%i:\n", tag1);
     current_continue_tag = last_continue_tag;
@@ -196,7 +201,8 @@ void write_statement_assembly(StatementNode* stmt, FILE* as_file, int ret_tag)
     fprintf(as_file, ".L%i:\n", tag0);
     write_statement_assembly(stmt->loop_stmt, as_file, ret_tag);
     write_expression_assembly(X0, stmt->loop_condition, as_file);
-    fprintf(as_file, "  cmp w%i, 0\n", X0);
+    fprintf(as_file, "  cmp %c%i, 0\n", 
+        reg_prefix_for_type(stmt->loop_condition->value_type), X0);
     fprintf(as_file, "  bne .L%i\n", tag0);
     fprintf(as_file, ".L%i:\n", tag1);
     current_continue_tag = last_continue_tag;
@@ -214,7 +220,8 @@ void write_statement_assembly(StatementNode* stmt, FILE* as_file, int ret_tag)
     fprintf(as_file, ".L%i:\n", tag0);
     if(stmt->loop_condition->type != EMPTY_EXP) {
       write_expression_assembly(X0, stmt->loop_condition, as_file);
-      fprintf(as_file, "  cmp w%i, 0\n", X0);
+      fprintf(as_file, "  cmp %c%i, 0\n", 
+          reg_prefix_for_type(stmt->loop_condition->value_type), X0);
       fprintf(as_file, "  beq .L%i\n", tag1);
     }
     write_statement_assembly(stmt->loop_stmt, as_file, ret_tag);
@@ -242,7 +249,8 @@ void write_statement_assembly(StatementNode* stmt, FILE* as_file, int ret_tag)
     fprintf(as_file, ".L%i:\n", tag0);
     if(stmt->loop_condition->type != EMPTY_EXP) {
       write_expression_assembly(X0, stmt->loop_condition, as_file);
-      fprintf(as_file, "  cmp w%i, 0\n", X0);
+      fprintf(as_file, "  cmp %c%i, 0\n", 
+          reg_prefix_for_type(stmt->loop_condition->value_type), X0);
       fprintf(as_file, "  beq .L%i\n", tag1);
     }
     write_statement_assembly(stmt->loop_stmt, as_file, ret_tag);
@@ -354,7 +362,7 @@ void write_switch_case_table(StatementNode* switch_stmt, FILE* as_file)
       node->def = 0;
       node->next = table->first;
       table->first = node;
-      fprintf(as_file, "  cmp w%i, %ld\n", X0, node->val);
+      fprintf(as_file, "  cmp x%i, %ld\n", X0, node->val);
       fprintf(as_file, "  beq .L%zu\n", node->tag);
     } else if(block->body[i]->type == STATEMENT_ITEM
        && block->body[i]->stmt->type == DEFAULT_STATEMENT) {
@@ -377,17 +385,47 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
   size_t offset;
   int tag0;
   int tag1;
+  char reg_prefix = reg_prefix_for_type(exp->value_type);
+  char sign_char = exp->value_type.signed_ ? 's' : 'u';
+  char suffix = suffix_for_type(exp->value_type);
   switch(exp->type) {
+  case CHAR_VALUE:
+    fprintf(as_file, "  movb w%i, #%i\n", reg, exp->char_value);
+    break;
+  case UCHAR_VALUE:
+    fprintf(as_file, "  movb w%i, #%i\n", reg, exp->uchar_value);
+    break;
+  case SHORT_VALUE:
+    fprintf(as_file, "  movh w%i, #%i\n", reg, exp->short_value);
+    break;
+  case USHORT_VALUE:
+    fprintf(as_file, "  movh w%i, #%i\n", reg, exp->ushort_value);
+    break;
   case INT_VALUE:
     fprintf(as_file, "  mov w%i, #%i\n", reg, exp->int_value);
     break;
+  case UINT_VALUE:
+    fprintf(as_file, "  mov w%i, #%i\n", reg, exp->uint_value);
+    break;
+  case LONG_VALUE:
+    fprintf(as_file, "  mov x%i, #%ld\n", reg, exp->long_value);
+    break;
+  case ULONG_VALUE:
+    fprintf(as_file, "  mov x%i, #%lu\n", reg, exp->ulong_value);
+    break;
+  case LONGLONG_VALUE:
+    fprintf(as_file, "  mov x%i, #%lld\n", reg, exp->longlong_value);
+    break;
+  case ULONGLONG_VALUE:
+    fprintf(as_file, "  mov x%i, #%llu\n", reg, exp->ulonglong_value);
+    break;
   case NEGATE:
     write_expression_assembly(reg, exp->unary_operand, as_file);
-    fprintf(as_file, "  neg w%i, w%i\n", reg, reg);
+    fprintf(as_file, "  neg %c%i, %c%i\n", reg_prefix, reg, reg_prefix, reg);
     break;
   case BITWISE_COMP:
     write_expression_assembly(reg, exp->unary_operand, as_file);
-    fprintf(as_file, "  mvn w%i, w%i\n", reg, reg);
+    fprintf(as_file, "  mvn %c%i, %c%i\n", reg_prefix, reg, reg_prefix, reg);
     break;
   case LOG_NOT:
     write_expression_assembly(reg, exp->unary_operand, as_file);
@@ -395,94 +433,101 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
     // cmp w0, 0
     // cset w0, eq
     // and w0, w0, 255 # probably not necessary
-    fprintf(as_file, "  cmp w%i, 0\n  cset w%i, eq\n", reg, reg);
+    fprintf(as_file, "  cmp %c%i, 0\n  cset %c%i, eq\n", 
+        reg_prefix, reg, reg_prefix, reg);
     break;
   case ADD_BINEXP:
     check_next_reg(reg);
     write_expression_assembly(reg, exp->left_operand, as_file);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
-    fprintf(as_file, "  add w%i, w%i, w%i\n", reg, reg, reg+1);
+    fprintf(as_file, "  add %c%i, %c%i, %c%i\n", 
+        reg_prefix, reg, reg_prefix, reg, reg_prefix, reg+1);
     break;
   case SUB_BINEXP:
     check_next_reg(reg);
     write_expression_assembly(reg, exp->left_operand, as_file);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
-    fprintf(as_file, "  sub w%i, w%i, w%i\n", reg, reg, reg+1);
+    fprintf(as_file, "  sub %c%i, %c%i, %c%i\n",
+        reg_prefix, reg, reg_prefix, reg, reg_prefix, reg+1);
     break;
   case MUL_BINEXP:
     check_next_reg(reg);
     write_expression_assembly(reg, exp->left_operand, as_file);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
-    fprintf(as_file, "  mul w%i, w%i, w%i\n", reg, reg, reg+1);
+    fprintf(as_file, "  mul %c%i, %c%i, %c%i\n",
+        reg_prefix, reg, reg_prefix, reg, reg_prefix, reg+1);
     break;
   case DIV_BINEXP:
     check_next_reg(reg);
     write_expression_assembly(reg, exp->left_operand, as_file);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
-    fprintf(as_file, "  sdiv w%i, w%i, w%i\n", reg, reg, reg+1);
+    fprintf(as_file, "  %cdiv %c%i, %c%i, %c%i\n",
+        sign_char, reg_prefix, reg, reg_prefix, reg, reg_prefix, reg+1);
     break;
   case MOD_BINEXP:
     check_next_reg(reg);
     check_next_reg(reg+1);
     write_expression_assembly(reg, exp->left_operand, as_file);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
-    fprintf(as_file, "  sdiv w%i, w%i, w%i\n", reg+2, reg, reg+1);
-    fprintf(as_file, "  msub w%i, w%i, w%i, w%i\n", reg, reg+1, reg+2, reg);
+    fprintf(as_file, "  %cdiv %c%i, %c%i, %c%i\n",
+        sign_char, reg_prefix, reg+2, reg_prefix, reg, reg_prefix, reg+1);
+    fprintf(as_file, "  msub %c%i, %c%i, %c%i, %c%i\n",
+        reg_prefix, reg, reg_prefix, reg+1, reg_prefix, reg+2, reg_prefix, reg);
     break;
   case EQ_BINEXP:
     check_next_reg(reg);
     write_expression_assembly(reg, exp->left_operand, as_file);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
-    fprintf(as_file, "  cmp w%i, w%i\n", reg, reg+1);
-    fprintf(as_file, "  cset w%i, eq\n", reg);
+    fprintf(as_file, "  cmp %c%i, %c%i\n", reg_prefix, reg, reg_prefix, reg+1);
+    fprintf(as_file, "  cset %c%i, eq\n", reg_prefix, reg);
     break;
   case NEQ_BINEXP:
     check_next_reg(reg);
     write_expression_assembly(reg, exp->left_operand, as_file);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
-    fprintf(as_file, "  cmp w%i, w%i\n", reg, reg+1);
-    fprintf(as_file, "  cset w%i, ne\n", reg);
+    fprintf(as_file, "  cmp %c%i, %c%i\n", reg_prefix, reg, reg_prefix, reg+1);
+    fprintf(as_file, "  cset %c%i, ne\n", reg_prefix, reg);
     break;
   case GT_BINEXP:
     check_next_reg(reg);
     write_expression_assembly(reg, exp->left_operand, as_file);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
-    fprintf(as_file, "  cmp w%i, w%i\n", reg, reg+1);
-    fprintf(as_file, "  cset w%i, gt\n", reg);
+    fprintf(as_file, "  cmp %c%i, %c%i\n", reg_prefix, reg, reg_prefix, reg+1);
+    fprintf(as_file, "  cset %c%i, gt\n", reg_prefix, reg);
     break;
   case GEQ_BINEXP:
     check_next_reg(reg);
     write_expression_assembly(reg, exp->left_operand, as_file);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
-    fprintf(as_file, "  cmp w%i, w%i\n", reg, reg+1);
-    fprintf(as_file, "  cset w%i, ge\n", reg);
+    fprintf(as_file, "  cmp %c%i, %c%i\n", reg_prefix, reg, reg_prefix, reg+1);
+    fprintf(as_file, "  cset %c%i, ge\n", reg_prefix, reg);
     break;
   case LT_BINEXP:
     check_next_reg(reg);
     write_expression_assembly(reg, exp->left_operand, as_file);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
-    fprintf(as_file, "  cmp w%i, w%i\n", reg, reg+1);
-    fprintf(as_file, "  cset w%i, lt\n", reg);
+    fprintf(as_file, "  cmp %c%i, %c%i\n", reg_prefix, reg, reg_prefix, reg+1);
+    fprintf(as_file, "  cset %c%i, lt\n", reg_prefix, reg);
     break;
   case LEQ_BINEXP:
     check_next_reg(reg);
     write_expression_assembly(reg, exp->left_operand, as_file);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
-    fprintf(as_file, "  cmp w%i, w%i\n", reg, reg+1);
-    fprintf(as_file, "  cset w%i, le\n", reg);
+    fprintf(as_file, "  cmp %c%i, %c%i\n", reg_prefix, reg, reg_prefix, reg+1);
+    fprintf(as_file, "  cset %c%i, le\n", reg_prefix, reg);
     break;
   case AND_BINEXP:
     tag0 = tag_counter++;
     tag1 = tag_counter++;
     write_expression_assembly(reg, exp->left_operand, as_file);
-    fprintf(as_file, "  cmp w%i, 0\n", reg);
+    fprintf(as_file, "  cmp %c%i, 0\n", reg_prefix, reg);
     fprintf(as_file, "  beq .L%i\n", tag0);
     write_expression_assembly(reg, exp->right_operand, as_file);
-    fprintf(as_file, "  cmp w%i, 0\n", reg);
+    fprintf(as_file, "  cmp %c%i, 0\n", reg_prefix, reg);
     fprintf(as_file, "  beq .L%i\n", tag0);
-    fprintf(as_file, "  mov w%i, 1\n", reg);
+    fprintf(as_file, "  mov %c%i, 1\n", reg_prefix, reg);
     fprintf(as_file, "  b .L%i\n", tag1);
-    fprintf(as_file, ".L%i:\n  mov w%i, 0\n", tag0, reg);
+    fprintf(as_file, ".L%i:\n  mov %c%i, 0\n", tag0, reg_prefix, reg);
     fprintf(as_file, ".L%i:\n", tag1);
     //fprintf(as_file, "  ccmp w%i, 0, 4, ne\n", reg+1);
     //fprintf(as_file, "  cset w%i, ne\n", reg);
@@ -491,14 +536,14 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
     tag0 = tag_counter++;
     tag1 = tag_counter++;
     write_expression_assembly(reg, exp->left_operand, as_file);
-    fprintf(as_file, "  cmp w%i, 0\n", reg);
+    fprintf(as_file, "  cmp %c%i, 0\n", reg_prefix, reg);
     fprintf(as_file, "  bne .L%i\n", tag0);
     write_expression_assembly(reg, exp->right_operand, as_file);
-    fprintf(as_file, "  cmp w%i, 0\n", reg);
+    fprintf(as_file, "  cmp %c%i, 0\n", reg_prefix, reg);
     fprintf(as_file, "  bne .L%i\n", tag0);
-    fprintf(as_file, "  mov w%i, 0\n", reg);
+    fprintf(as_file, "  mov %c%i, 0\n", reg_prefix, reg);
     fprintf(as_file, "  b .L%i\n", tag1);
-    fprintf(as_file, ".L%i:\n  mov w%i, 1\n", tag0, reg);
+    fprintf(as_file, ".L%i:\n  mov %c%i, 1\n", tag0, reg_prefix, reg);
     fprintf(as_file, ".L%i:\n", tag1);
     //fprintf(as_file, "  orr w%i, w%i, w%i\n", reg, reg, reg+1);
     //fprintf(as_file, "  cmp w%i, 0\n", reg);
@@ -508,132 +553,197 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
     check_next_reg(reg);
     write_expression_assembly(reg, exp->left_operand, as_file);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
-    fprintf(as_file, "  and w%i, w%i, w%i\n", reg, reg, reg+1);
+    fprintf(as_file, "  and %c%i, %c%i, %c%i\n",
+        reg_prefix, reg, reg_prefix, reg, reg_prefix, reg+1);
     break;
   case BITOR_BINEXP:
     check_next_reg(reg);
     write_expression_assembly(reg, exp->left_operand, as_file);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
-    fprintf(as_file, "  orr w%i, w%i, w%i\n", reg, reg, reg+1);
+    fprintf(as_file, "  orr %c%i, %c%i, %c%i\n",
+        reg_prefix, reg, reg_prefix, reg, reg_prefix, reg+1);
     break;
   case BITXOR_BINEXP:
     check_next_reg(reg);
     write_expression_assembly(reg, exp->left_operand, as_file);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
-    fprintf(as_file, "  eor w%i, w%i, w%i\n", reg, reg, reg+1);
+    fprintf(as_file, "  eor %c%i, %c%i, %c%i\n",
+        reg_prefix, reg, reg_prefix, reg, reg_prefix, reg+1);
     break;
   case LSHIFT_BINEXP:
     check_next_reg(reg);
     write_expression_assembly(reg, exp->left_operand, as_file);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
-    fprintf(as_file, "  lsl w%i, w%i, w%i\n", reg, reg, reg+1);
+    fprintf(as_file, "  lsl %c%i, %c%i, %c%i\n",
+        reg_prefix, reg, reg_prefix, reg, reg_prefix, reg+1);
     break;
   case RSHIFT_BINEXP:
     check_next_reg(reg);
     write_expression_assembly(reg, exp->left_operand, as_file);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
-    fprintf(as_file, "  asr w%i, w%i, w%i\n", reg, reg, reg+1);
+    fprintf(as_file, "  asr %c%i, %c%i, %c%i\n",
+        reg_prefix, reg, reg_prefix, reg, reg_prefix, reg+1);
     break;
   case ASSIGN_EXP:
     offset = get_symbol_offset(exp->left_operand->var_name, as_file);
+    suffix = suffix_for_type(exp->left_operand->value_type);
     write_expression_assembly(reg, exp->right_operand, as_file);
-    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg, offset);
+    if(suffix) {
+      fprintf(as_file, "  str%c %c%i, [sp, %lu]\n", suffix, reg_prefix, reg, offset);
+    } else {
+      fprintf(as_file, "  str %c%i, [sp, %lu]\n", reg_prefix, reg, offset);
+    }
     break;
   case PLUSEQ_EXP:
     offset = get_symbol_offset(exp->left_operand->var_name, as_file);
+    suffix = suffix_for_type(exp->left_operand->value_type);
     check_next_reg(reg);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
     write_expression_assembly(reg, exp->left_operand, as_file);
-    //fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
-    fprintf(as_file, "  add w%i, w%i, w%i\n", reg, reg, reg+1);
-    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg, offset);
+    fprintf(as_file, "  add %c%i, %c%i, %c%i\n",
+        reg_prefix, reg, reg_prefix, reg, reg_prefix, reg+1);
+    if(suffix) {
+      fprintf(as_file, "  str%c %c%i, [sp, %lu]\n", suffix, reg_prefix, reg, offset);
+    } else {
+      fprintf(as_file, "  str %c%i, [sp, %lu]\n", reg_prefix, reg, offset);
+    }
     break;
   case MINUSEQ_EXP:
     offset = get_symbol_offset(exp->left_operand->var_name, as_file);
+    suffix = suffix_for_type(exp->left_operand->value_type);
     check_next_reg(reg);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
     write_expression_assembly(reg, exp->left_operand, as_file);
-    //fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
-    fprintf(as_file, "  sub w%i, w%i, w%i\n", reg, reg, reg+1);
-    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg, offset);
+    fprintf(as_file, "  sub %c%i, %c%i, %c%i\n",
+        reg_prefix, reg, reg_prefix, reg, reg_prefix, reg+1);
+    if(suffix) {
+      fprintf(as_file, "  str%c %c%i, [sp, %lu]\n", suffix, reg_prefix, reg, offset);
+    } else {
+      fprintf(as_file, "  str %c%i, [sp, %lu]\n", reg_prefix, reg, offset);
+    }
     break;
   case TIMESEQ_EXP:
     offset = get_symbol_offset(exp->left_operand->var_name, as_file);
+    suffix = suffix_for_type(exp->left_operand->value_type);
     check_next_reg(reg);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
     write_expression_assembly(reg, exp->left_operand, as_file);
-    //fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
-    fprintf(as_file, "  mul w%i, w%i, w%i\n", reg, reg, reg+1);
-    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg, offset);
+    fprintf(as_file, "  mul %c%i, %c%i, %c%i\n",
+        reg_prefix, reg, reg_prefix, reg, reg_prefix, reg+1);
+    if(suffix) {
+      fprintf(as_file, "  str%c %c%i, [sp, %lu]\n", suffix, reg_prefix, reg, offset);
+    } else {
+      fprintf(as_file, "  str %c%i, [sp, %lu]\n", reg_prefix, reg, offset);
+    }
     break;
   case DIVEQ_EXP:
     offset = get_symbol_offset(exp->left_operand->var_name, as_file);
+    suffix = suffix_for_type(exp->left_operand->value_type);
     check_next_reg(reg);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
     write_expression_assembly(reg, exp->left_operand, as_file);
-    //fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
-    fprintf(as_file, "  sdiv w%i, w%i, w%i\n", reg, reg, reg+1);
-    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg, offset);
+    fprintf(as_file, "  %cdiv %c%i, %c%i, %c%i\n",
+        sign_char, reg_prefix, reg, reg_prefix, reg, reg_prefix, reg+1);
+    if(suffix) {
+      fprintf(as_file, "  str%c %c%i, [sp, %lu]\n", suffix, reg_prefix, reg, offset);
+    } else {
+      fprintf(as_file, "  str %c%i, [sp, %lu]\n", reg_prefix, reg, offset);
+    }
     break;
   case MODEQ_EXP:
     offset = get_symbol_offset(exp->left_operand->var_name, as_file);
+    suffix = suffix_for_type(exp->left_operand->value_type);
     check_next_reg(reg);
     check_next_reg(reg+1);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
     write_expression_assembly(reg, exp->left_operand, as_file);
-    //fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
-    fprintf(as_file, "  sdiv w%i, w%i, w%i\n", reg+2, reg, reg+1);
-    fprintf(as_file, "  msub w%i, w%i, w%i, w%i\n", reg, reg+1, reg+2, reg);
-    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg, offset);
+    fprintf(as_file, "  %cdiv %c%i, %c%i, %c%i\n",
+        sign_char, reg_prefix, reg+2, reg_prefix, reg, reg_prefix, reg+1);
+    fprintf(as_file, "  msub %c%i, %c%i, %c%i, %c%i\n",
+        reg_prefix, reg, reg_prefix, reg+1, reg_prefix, reg+2, reg_prefix, reg);
+    if(suffix) {
+      fprintf(as_file, "  str%c %c%i, [sp, %lu]\n", suffix, reg_prefix, reg, offset);
+    } else {
+      fprintf(as_file, "  str %c%i, [sp, %lu]\n", reg_prefix, reg, offset);
+    }
     break;
   case LSHEQ_EXP:
     offset = get_symbol_offset(exp->left_operand->var_name, as_file);
+    suffix = suffix_for_type(exp->left_operand->value_type);
     check_next_reg(reg);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
     write_expression_assembly(reg, exp->left_operand, as_file);
-    //fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
-    fprintf(as_file, "  lsl w%i, w%i, w%i\n", reg, reg, reg+1);
-    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg, offset);
+    fprintf(as_file, "  lsl %c%i, %c%i, %c%i\n",
+        reg_prefix, reg, reg_prefix, reg, reg_prefix, reg+1);
+    if(suffix) {
+      fprintf(as_file, "  str%c %c%i, [sp, %lu]\n", suffix, reg_prefix, reg, offset);
+    } else {
+      fprintf(as_file, "  str %c%i, [sp, %lu]\n", reg_prefix, reg, offset);
+    }
     break;
   case RSHEQ_EXP:
     offset = get_symbol_offset(exp->left_operand->var_name, as_file);
+    suffix = suffix_for_type(exp->left_operand->value_type);
     check_next_reg(reg);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
     write_expression_assembly(reg, exp->left_operand, as_file);
-    //fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
-    fprintf(as_file, "  asr w%i, w%i, w%i\n", reg, reg, reg+1);
-    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg, offset);
+    fprintf(as_file, "  asr %c%i, %c%i, %c%i\n",
+        reg_prefix, reg, reg_prefix, reg, reg_prefix, reg+1);
+    if(suffix) {
+      fprintf(as_file, "  str%c %c%i, [sp, %lu]\n", suffix, reg_prefix, reg, offset);
+    } else {
+      fprintf(as_file, "  str %c%i, [sp, %lu]\n", reg_prefix, reg, offset);
+    }
     break;
   case ANDEQ_EXP:
     offset = get_symbol_offset(exp->left_operand->var_name, as_file);
+    suffix = suffix_for_type(exp->left_operand->value_type);
     check_next_reg(reg);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
     write_expression_assembly(reg, exp->left_operand, as_file);
-    //fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
-    fprintf(as_file, "  and w%i, w%i, w%i\n", reg, reg, reg+1);
-    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg, offset);
+    fprintf(as_file, "  and %c%i, %c%i, %c%i\n",
+        reg_prefix, reg, reg_prefix, reg, reg_prefix, reg+1);
+    if(suffix) {
+      fprintf(as_file, "  str%c %c%i, [sp, %lu]\n", suffix, reg_prefix, reg, offset);
+    } else {
+      fprintf(as_file, "  str %c%i, [sp, %lu]\n", reg_prefix, reg, offset);
+    }
     break;
   case OREQ_EXP:
     offset = get_symbol_offset(exp->left_operand->var_name, as_file);
+    suffix = suffix_for_type(exp->left_operand->value_type);
     check_next_reg(reg);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
     write_expression_assembly(reg, exp->left_operand, as_file);
-    //fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
-    fprintf(as_file, "  orr w%i, w%i, w%i\n", reg, reg, reg+1);
-    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg, offset);
+    fprintf(as_file, "  orr %c%i, %c%i, %c%i\n",
+        reg_prefix, reg, reg_prefix, reg, reg_prefix, reg+1);
+    if(suffix) {
+      fprintf(as_file, "  str%c %c%i, [sp, %lu]\n", suffix, reg_prefix, reg, offset);
+    } else {
+      fprintf(as_file, "  str %c%i, [sp, %lu]\n", reg_prefix, reg, offset);
+    }
     break;
   case XOREQ_EXP:
     offset = get_symbol_offset(exp->left_operand->var_name, as_file);
+    suffix = suffix_for_type(exp->left_operand->value_type);
     check_next_reg(reg);
     write_expression_assembly(reg+1, exp->right_operand, as_file);
     write_expression_assembly(reg, exp->left_operand, as_file);
-    //fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, func_stack_offset - sym.offset);
-    fprintf(as_file, "  eor w%i, w%i, w%i\n", reg, reg, reg+1);
-    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg, offset);
+    fprintf(as_file, "  eor %c%i, %c%i, %c%i\n",
+        reg_prefix, reg, reg_prefix, reg, reg_prefix, reg+1);
+    if(suffix) {
+      fprintf(as_file, "  str%c %c%i, [sp, %lu]\n", suffix, reg_prefix, reg, offset);
+    } else {
+      fprintf(as_file, "  str %c%i, [sp, %lu]\n", reg_prefix, reg, offset);
+    }
     break;
   case VAR_EXP:
     offset = get_symbol_offset(exp->var_name, as_file);
-    fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, offset);
+    if(suffix) {
+      fprintf(as_file, "  ldr%c %c%i, [sp, %lu]\n", suffix, reg_prefix, reg, offset);
+    } else {
+      fprintf(as_file, "  ldr %c%i, [sp, %lu]\n", reg_prefix, reg, offset);
+    }
     break;
   case COMMA_EXP:
     write_expression_assembly(reg, exp->left_operand, as_file);
@@ -642,38 +752,50 @@ void write_expression_assembly(Register reg, ExpressionNode* exp, FILE* as_file)
   case PREINC_EXP:
     offset = get_symbol_offset(exp->left_operand->var_name, as_file);
     write_expression_assembly(reg, exp->left_operand, as_file);
-    //fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, offset);
-    fprintf(as_file, "  add w%i, w%i, #1\n", reg, reg);
-    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg, offset);
+    fprintf(as_file, "  add %c%i, %c%i, #1\n", reg_prefix, reg, reg_prefix, reg);
+    if(suffix) {
+      fprintf(as_file, "  str%c %c%i, [sp, %lu]\n", suffix, reg_prefix, reg, offset);
+    } else {
+      fprintf(as_file, "  str %c%i, [sp, %lu]\n", reg_prefix, reg, offset);
+    }
     break;
   case PREDEC_EXP:
     offset = get_symbol_offset(exp->left_operand->var_name, as_file);
     write_expression_assembly(reg, exp->left_operand, as_file);
-    //fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, offset);
-    fprintf(as_file, "  sub w%i, w%i, #1\n", reg, reg);
-    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg, offset);
+    fprintf(as_file, "  sub %c%i, %c%i, #1\n", reg_prefix, reg, reg_prefix, reg);
+    if(suffix) {
+      fprintf(as_file, "  str%c %c%i, [sp, %lu]\n", suffix, reg_prefix, reg, offset);
+    } else {
+      fprintf(as_file, "  str %c%i, [sp, %lu]\n", reg_prefix, reg, offset);
+    }
     break;
   case POSTINC_EXP:
     offset = get_symbol_offset(exp->left_operand->var_name, as_file);
     check_next_reg(reg);
     write_expression_assembly(reg, exp->left_operand, as_file);
-    //fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, offset);
-    fprintf(as_file, "  add w%i, w%i, #1\n", reg+1, reg);
-    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg+1, offset);
+    fprintf(as_file, "  add %c%i, %c%i, #1\n", reg_prefix, reg+1, reg_prefix, reg);
+    if(suffix) {
+      fprintf(as_file, "  str%c %c%i, [sp, %lu]\n", suffix, reg_prefix, reg+1, offset);
+    } else {
+      fprintf(as_file, "  str %c%i, [sp, %lu]\n", reg_prefix, reg+1, offset);
+    }
     break;
   case POSTDEC_EXP:
     offset = get_symbol_offset(exp->left_operand->var_name, as_file);
     check_next_reg(reg);
     write_expression_assembly(reg, exp->left_operand, as_file);
-    //fprintf(as_file, "  ldr w%i, [sp, %lu]\n", reg, offset);
-    fprintf(as_file, "  sub w%i, w%i, #1\n", reg+1, reg);
-    fprintf(as_file, "  str w%i, [sp, %lu]\n", reg+1, offset);
+    fprintf(as_file, "  sub %c%i, %c%i, #1\n", reg_prefix, reg+1, reg_prefix, reg);
+    if(suffix) {
+      fprintf(as_file, "  str%c %c%i, [sp, %lu]\n", suffix, reg_prefix, reg+1, offset);
+    } else {
+      fprintf(as_file, "  str %c%i, [sp, %lu]\n", reg_prefix, reg+1, offset);
+    }
     break;
   case COND_EXP:
     tag0 = tag_counter++;
     tag1 = tag_counter++;
     write_expression_assembly(reg, exp->condition, as_file);
-    fprintf(as_file, "  cmp w%i, 0\n", reg);
+    fprintf(as_file, "  cmp %c%i, 0\n", reg_prefix, reg);
     fprintf(as_file, "  beq .L%i\n", tag0);
     write_expression_assembly(reg, exp->if_exp, as_file);
     fprintf(as_file, "  b .L%i\n", tag1);
@@ -697,16 +819,33 @@ void check_next_reg(Register reg)
   }
 }
 
+int type_size(Type type)
+{
+  switch(type.base) {
+  case CHAR_VAR: return 1;
+  case SHORT_VAR: return 2;
+  case INT_VAR: return 4;
+  case LONG_VAR: return 8;
+  case LONG_LONG_VAR: return 8;
+  case FLOAT_VAR: return 4;
+  case DOUBLE_VAR: return 8;
+  default: return 4;
+  }
+}
+
 int count_local_vars(BlockNode* block)
 {
   int local_vars = 0;
+  Type type;
   for(unsigned int i = 0; i < block->count; i++) {
     if(block->body[i]->type == DECLARATION_ITEM) {
-      local_vars++;
+      type = block->body[i]->decl->var_type;
+      local_vars += type_size(type);
     } else {
       switch(block->body[i]->stmt->type) {
       case FORDECL_LOOP:
-        local_vars++;
+        type = block->body[i]->stmt->init_decl->var_type;
+        local_vars += type_size(type);
         if (block->body[i]->stmt->loop_stmt->type == BLOCK_STATEMENT) {
           local_vars += count_local_vars(block->body[i]->stmt->loop_stmt->block);
         }
@@ -786,4 +925,29 @@ size_t get_symbol_offset(char* name, FILE* as_file)
     st = st->next;
   }
   return func_stack_offset - sym.offset;
+}
+
+char reg_prefix_for_type(Type type)
+{
+  switch(type.base) {
+  case LONG_LONG_VAR:
+  case LONG_VAR:
+    return 'x';
+  default:
+    return 'w';
+  }
+  return 'w';
+}
+
+char suffix_for_type(Type type)
+{
+  switch (type.base) {
+  case CHAR_VAR:
+    return 'b';
+  case SHORT_VAR:
+    return 'h';
+  default:
+    return '\0';
+  }
+  return '\0';
 }

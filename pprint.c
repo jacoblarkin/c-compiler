@@ -28,7 +28,7 @@ void pretty_print(ProgramNode program)
 {
   if(program.main) {
     FunctionNode* main = program.main;
-    printf("func main -> %s:\n", (main->type == INT_RET ? "int" : "void"));
+    printf("func main -> %s:\n", (main->type.base == INT_VAR ? "int" : "void"));
     print_block(main->body, 1);
   }
 }
@@ -192,8 +192,35 @@ void print_statement(StatementNode* stmt, int n_indent)
 void print_expression(ExpressionNode* exp)
 {
   switch(exp->type) {
+  case CHAR_VALUE:
+    printf("%c", exp->char_value);
+    break;
+  case UCHAR_VALUE:
+    printf("%c", exp->uchar_value);
+    break;
+  case SHORT_VALUE:
+    printf("%i", exp->short_value);
+    break;
+  case USHORT_VALUE:
+    printf("%u", exp->ushort_value);
+    break;
   case INT_VALUE:
     printf("%i", exp->int_value);
+    break;
+  case UINT_VALUE:
+    printf("%u", exp->uint_value);
+    break;
+  case LONG_VALUE:
+    printf("%ld", exp->long_value);
+    break;
+  case ULONG_VALUE:
+    printf("%lu", exp->ulong_value);
+    break;
+  case LONGLONG_VALUE:
+    printf("%lld", exp->longlong_value);
+    break;
+  case ULONGLONG_VALUE:
+    printf("%llu", exp->ulonglong_value);
     break;
   case NEGATE:
     printf("-");
